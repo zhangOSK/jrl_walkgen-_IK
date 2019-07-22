@@ -485,6 +485,13 @@ protected:
     Eigen::VectorXd & currentConfiguration =
       m_PR->currentRPYConfiguration();
 
+    if ( iteration == 0 ){
+      m_DumpReferencesObjects.
+	setAnklePositions
+	(m_PR->rightFoot()->anklePosition,
+	 m_PR->leftFoot()->anklePosition);
+    }
+
     m_DumpReferencesObjects.fillInTests(m_TestName,
 					m_OneStep,
 					currentConfiguration);
@@ -529,9 +536,9 @@ protected:
 	aof.precision(8);
 	aof.setf(ios::scientific, ios::floatfield);
 	m_OneStep.fillInDebugFileContent(aof);
-	aof    << filterprecision(zmpmb[0]) << " "                            // 45
-	       << filterprecision(zmpmb[1]) << " "                            // 46
-	    << filterprecision(zmpmb[2]) << " "                           ;// 47
+	aof    << filterprecision(zmpmb[0]) << " "   // 45
+	       << filterprecision(zmpmb[1]) << " "   // 46
+	    << filterprecision(zmpmb[2]) << " "     ;// 47
 	for(unsigned int k = 0 ; k < m_conf.size() ; k++){ // 48-53 -> 54-83
 	  aof << filterprecision( m_conf(k) ) << " "  ;
 	}
@@ -548,17 +555,17 @@ protected:
 
   void createFullEventsForHRP2()
   {
-    ODEBUG3("createFullEventsForHRP2");
+    ODEBUG("createFullEventsForHRP2");
     localEvent events[8] =
       {
 	{1*200,&TestObject::walkForwardSlow},
-	/*{10*200,&TestObject::walkForward2m_s}, //reduce the walking time 
+	{2*200,&TestObject::startTurningRight2},
+	{10*200,&TestObject::walkForward2m_s},
 	{20*200,&TestObject::walkSidewards2m_s},
 	{30*200,&TestObject::walkX05Y04},
-	{40*200,&TestObject::startTurningRight2},
 	{50*200,&TestObject::walkOnSpot},
-	{66*200,&TestObject::stop},*/
-	{10*200,&TestObject::stopOnLineWalking}
+	{66*200,&TestObject::stop},
+	{76*200,&TestObject::stopOnLineWalking}
       };
 
     if (m_setOfLocalEvents!=0)
@@ -697,7 +704,7 @@ protected:
 
   void chooseTestProfile()
   {
-    ODEBUG3("ROBOT:" << m_PR->getName() <<
+    ODEBUG("ROBOT:" << m_PR->getName() <<
 	    " Profile: " << m_TestProfile);
     switch(m_TestProfile)
       {
@@ -775,11 +782,12 @@ int PerformTests(int argc, char *argv[])
     {
       std::cerr << "CompleteName: " << CompleteName << std::endl;
       std::cerr<< " TestName: " << TestName <<std::endl;
-      std::cerr<< "Failure to find the proper indexFile:" << TestName.substr(14,6) << endl;
+      std::cerr<< "Failure to find the proper indexFile:"
+	       << TestName.substr(14,6) << endl;
       exit(-1);
     }
   else
-    { ODEBUG3("Index detected: " << indexProfile);}
+    { ODEBUG("Index detected: " << indexProfile);}
 
   TestNaveau2015 aTN2015(argc,argv,TestName,TestProfiles[indexProfile]);
   if(!aTN2015.init())
