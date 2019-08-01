@@ -559,13 +559,13 @@ protected:
     localEvent events[8] =
       {
 	{1*200,&TestObject::walkForwardSlow},
-	{2*200,&TestObject::startTurningRight2},
+	/*{2*200,&TestObject::startTurningRight2},
 	{10*200,&TestObject::walkForward2m_s},
 	{20*200,&TestObject::walkSidewards2m_s},
 	{30*200,&TestObject::walkX05Y04},
 	{50*200,&TestObject::walkOnSpot},
-	{66*200,&TestObject::stop},
-	{76*200,&TestObject::stopOnLineWalking}
+	{66*200,&TestObject::stop},*/
+	{20*200,&TestObject::stopOnLineWalking}
       };
 
     if (m_setOfLocalEvents!=0)
