@@ -919,7 +919,7 @@ ComputePostureForGivenCoMAndFeetPosture
          aLeftFoot);
 
       //Impedance controller of left arm
-      //IKwithImpedanceOnLeftArm(qArml, lwLoPre, lwDesPre, InitLeftFootPosition, aCoMSpeed);
+      IKwithImpedanceOnLeftArm(qArml, lwLoPre, lwDesPre, /* InitLeftFootPosition,*/ aCoMSpeed);
     }
 
   // For stepping over modify the waist position and
@@ -1439,21 +1439,23 @@ void ComAndFootRealizationByGeometry::
                              Eigen::VectorXd & aCoMSpeed
     )
 {
-  pinocchio::Model model;
-  const std::string filename = "/opt/openrobots/share/talos_data/urdf/talos_arm.urdf";
-  pinocchio::urdf::buildModel(filename, model);
-  pinocchio::Data data(model);
+  pinocchio::Model modelArm;
+  const std::string filename = "/home/ang/Downloads/talos_data/urdf/talos_arm.urdf";
+  pinocchio::urdf::buildModel(filename, modelArm);
+  pinocchio::Data dataArm(modelArm);
 
   //pinocchio::JointIndex waistJoint = getPinocchioRobot()->waist();
   pinocchio::JointIndex leftWristJoint = getPinocchioRobot()->leftWrist();
   Eigen::Vector3d xdes;   
   Eigen::VectorXd q;
-  q.resize(model.nq,1);
+  q.resize(modelArm.nq,1);
+
   //q.fill(0.0);
   //q << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1; 
   // Size of qArml in pinocchiorobot.cpp is 6, but in talos, the size of q arm is 7.
   if(q.size() != qArml.size())
   {
+    std::cerr<<"q is not 7" << std::endl;
     q(0) = 0.25847; //may cause problem if q(0) is optimized later
     for (int i=0;i<6;i++)
     {
@@ -1463,43 +1465,45 @@ void ComAndFootRealizationByGeometry::
   //xdes = ImpHandPos(lwLoPre, lwDesPre, InitLeftFootPosition, aCoMSpeed); // pos in local frame
   xdes.fill(0);//******************
 
-  ODEBUG5(xdes[0]<<" "<< xdes[1]<<" "<<xdes[2], "HandImp.txt");
+  ODEBUG4(xdes[0]<<" "<< xdes[1]<<" "<<xdes[2], "HandImp.txt");
 
   const double eps      = 1e-4;
   const int IT_MAX      = 1000;
   const double DT       = 5e-3;
-  pinocchio::Data::Matrix6x J(7,model.nv); J.setZero(); //7 joints in arm
+  pinocchio::Data::Matrix6x J(6,modelArm.nv); J.setZero(); //7 joints in arm
   unsigned int svdOptions = Eigen::ComputeThinU | Eigen::ComputeThinV;
-  Eigen::BDCSVD<pinocchio::Data::Matrix3x> svd(3,model.nv,svdOptions);
+  Eigen::BDCSVD<pinocchio::Data::Matrix3x> svd(3,modelArm.nv,svdOptions);
   Eigen::Vector3d err;  
+  const int    JOINT_ID = 7;
 
   for (int i=0;;i++)
   {
-    pinocchio::forwardKinematics(model,data,q);  
-    pinocchio::SE3 leftWristSE3 = getPinocchioRobot()->Data()->oMi[leftWristJoint];
-    const Eigen::Vector3d & x   = leftWristSE3.translation();
-    const Eigen::Matrix3d & R   = leftWristSE3.rotation();
+    pinocchio::forwardKinematics(modelArm,dataArm,q);  
+    //pinocchio::SE3 leftWristSE3 = getPinocchioRobot()->Data()->oMi[leftWristJoint];
+    //const Eigen::Vector3d & x   = leftWristSE3.translation();
+    //const Eigen::Matrix3d & R   = leftWristSE3.rotation();
+    const Eigen::Vector3d & x   = dataArm.oMi[JOINT_ID].translation();
+    const Eigen::Matrix3d & R   = dataArm.oMi[JOINT_ID].rotation();
 
     double posX_;
     posX_ = x(0) + 0.05;
     xdes = x; 
     xdes(0) = posX_; //Only focus on x, *************
-    
 
     err = R.transpose()*x-xdes;// transform x to local frame
     if(err.norm() < eps)
     {
-        //std::cout << "Convergence achieved!" << std::endl;
+        //std::cerr << "Convergence achieved!" << std::endl;
         break;
     }
     if (i >= IT_MAX)
     {
-        std::cout << "\nWarning: the iterative algorithm has not reached convergence to the desired precision" << std::endl;
+        std::cerr << "\nWarning: the iterative algorithm has not reached convergence to the desired precision" << std::endl;
         break;
     }
-    pinocchio::jointJacobian(model,data,q,leftWristJoint,J);
+    pinocchio::jointJacobian(modelArm,dataArm,q,JOINT_ID,J);;
     const Eigen::VectorXd v     = - svd.compute(J.topRows<3>()).solve(err);
-    q = pinocchio::integrate(model,q,v*DT);
+    q = pinocchio::integrate(modelArm,q,v*DT);
 
     if(q.size() != qArml.size())
     {
