@@ -38,6 +38,10 @@
 #include <MotionGeneration/UpperBodyMotion.hh>
 #include <MotionGeneration/GenerateMotionFromKineoWorks.hh>
 
+#include "pinocchio/algorithm/kinematics.hpp"
+#include "pinocchio/algorithm/jacobian.hpp"
+#include "pinocchio/algorithm/joint-configuration.hpp"
+
 namespace PatternGeneratorJRL
 {
   /* @ingroup motiongeneration
@@ -113,6 +117,7 @@ namespace PatternGeneratorJRL
      Eigen::VectorXd & CurrentAcceleration,
      unsigned long int IterationNumber,
      int Stage);
+     //const FootAbsolutePosition & InitLeftFootPosition);
 
     /*! \name Initialization of the walking.
       @{
@@ -197,6 +202,17 @@ namespace PatternGeneratorJRL
      Eigen::VectorXd & aCOMPosition,
      Eigen::VectorXd & RFP,
      Eigen::VectorXd &  LFP);
+
+    //Impedance control on left wrist and IK
+    void IKwithImpedanceOnLeftArm(Eigen::VectorXd & qArml,
+                        Eigen::Vector3d & lwLoPre,
+                        Eigen::Vector3d & lwDesPre, 
+                        //const FootAbsolutePosition & InitLeftFootPosition,
+                        Eigen::VectorXd & aCoMSpeed);
+    Eigen::Vector3d ImpHandPos(Eigen::Vector3d & lwLoPre,
+               Eigen::Vector3d & lwDesPre, 
+               //const FootAbsolutePosition & InitLeftFootPosition,
+               Eigen::VectorXd & aCoMSpeed);
 
     /*! This method returns the final COM pose matrix 
       after the second stage of control. */
@@ -575,6 +591,9 @@ namespace PatternGeneratorJRL
     pinocchio::JointIndex m_LeftShoulder, m_RightShoulder;
 
     bool ShiftFoot_ ;
+
+    /*parameters for impedance control*/
+    Eigen::Vector3d lwLoPre, lwDesPre;
   };
 
   ostream & operator <<(ostream &os,const ComAndFootRealization &obj);
