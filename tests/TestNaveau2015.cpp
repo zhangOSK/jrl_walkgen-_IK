@@ -277,7 +277,8 @@ protected:
       ComputePostureForGivenCoMAndFeetPosture
       (aCOMState, aCOMSpeed, aCOMAcc,
        aLeftFootPosition, aRightFootPosition,
-       conf, vel, acc, iteration, 1);
+       conf, vel, acc, iteration, 1,
+       m_OneStep.m_LeftFootPosition); //footAbsolute);
 
     if(m_leftGripper!=0 && m_rightGripper!=0)
       {

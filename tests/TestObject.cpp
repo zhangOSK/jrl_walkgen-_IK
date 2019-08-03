@@ -852,7 +852,8 @@ namespace PatternGeneratorJRL
 	 aLeftFootPosition,
 	 aRightFootPosition,
 	 conf, vel, acc,
-	 ((int)m_OneStep.m_NbOfIt),1);
+	 ((int)m_OneStep.m_NbOfIt),1,
+   m_OneStep.m_LeftFootPosition); //footAbosulete);
 
       if(m_leftGripper!=0 && m_rightGripper!=0)
       {

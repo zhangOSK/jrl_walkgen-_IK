@@ -449,7 +449,8 @@ InverseKinematics
     (aCoMState_, aCoMSpeed_, aCoMAcc_,
      aLeftFootPosition_, aRightFootPosition_,
      configuration, velocity, acceleration,
-     iteration, stage);
+     iteration, stage,
+     inputLeftFoot);//footabso
   
   //  std::cout << " configuration:" << configuration << std::endl;
   ODEBUG5SIMPLE(configuration,"/tmp/test_configuration.dat");

@@ -515,7 +515,8 @@ namespace PatternGeneratorJRL
      Eigen::VectorXd & CurrentVelocity,
      Eigen::VectorXd & CurrentAcceleration,
      unsigned long int IterationNumber,
-     int StageOfTheAlgorithm);
+     int StageOfTheAlgorithm,
+     const FootAbsolutePosition & leftFootAbsolute); //footabso
 
     /*! Set the link to the preview control. */
     void SetPreviewControl(PreviewControl *aPC);

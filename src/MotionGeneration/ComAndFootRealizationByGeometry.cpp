@@ -876,7 +876,8 @@ ComputePostureForGivenCoMAndFeetPosture
  Eigen::VectorXd & CurrentVelocity,
  Eigen::VectorXd & CurrentAcceleration,
  unsigned long int IterationNumber,
- int Stage)
+ int Stage,
+ const FootAbsolutePosition & leftFootAbsolute) 
 {
   Eigen::Vector3d AbsoluteWaistPosition;
   Eigen::VectorXd lqr(6);
@@ -919,7 +920,7 @@ ComputePostureForGivenCoMAndFeetPosture
          aLeftFoot);
 
       //Impedance controller of left arm
-      IKwithImpedanceOnLeftArm(qArml, lwLoPre, lwDesPre, /* InitLeftFootPosition,*/ aCoMSpeed);
+      IKwithImpedanceOnLeftArm(qArml, lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed);
     }
 
   // For stepping over modify the waist position and
@@ -1435,7 +1436,7 @@ void ComAndFootRealizationByGeometry::
     IKwithImpedanceOnLeftArm(Eigen::VectorXd & qArml,
                              Eigen::Vector3d & lwLoPre,
                              Eigen::Vector3d & lwDesPre, 
-                             //const FootAbsolutePosition & InitLeftFootPosition,
+                             const FootAbsolutePosition & leftFootAbsolute,
                              Eigen::VectorXd & aCoMSpeed
     )
 {
@@ -1444,7 +1445,6 @@ void ComAndFootRealizationByGeometry::
   pinocchio::urdf::buildModel(filename, modelArm);
   pinocchio::Data dataArm(modelArm);
 
-  //pinocchio::JointIndex waistJoint = getPinocchioRobot()->waist();
   pinocchio::JointIndex leftWristJoint = getPinocchioRobot()->leftWrist();
   Eigen::Vector3d xdes;   
   Eigen::VectorXd q;
@@ -1462,8 +1462,9 @@ void ComAndFootRealizationByGeometry::
       q(i+1) = qArml(i);
     }
   }
-  //xdes = ImpHandPos(lwLoPre, lwDesPre, InitLeftFootPosition, aCoMSpeed); // pos in local frame
   xdes.fill(0);//******************
+  xdes = ImpHandPos(lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed); // pos in local frame
+  
 
   ODEBUG4(xdes[0]<<" "<< xdes[1]<<" "<<xdes[2], "HandImp.txt");
 
@@ -1517,7 +1518,7 @@ void ComAndFootRealizationByGeometry::
 Eigen::Vector3d ComAndFootRealizationByGeometry::
     ImpHandPos(Eigen::Vector3d & lwLoPre,
                Eigen::Vector3d & lwDesPre, 
-               //const FootAbsolutePosition & InitLeftFootPosition,
+               const FootAbsolutePosition & leftFootAbsolute,
                Eigen::VectorXd & aCoMSpeed)
 {
   pinocchio::JointIndex waistJoint = getPinocchioRobot()->waist();
@@ -1545,7 +1546,7 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   flw(0) = flwX;
   flw(2) = flwZ;
   //robot pulls the hose only at DS
-  /* if(InitLeftFootPosition.stepType == 10) //DS, can be walking or not walking
+  if(leftFootAbsolute.stepType == 10) //DS, can be walking or not walking
   {
     if (elapsed == 0 || elapsed > 20) // elapsed > 20, means robot is in DS but not walking
     {
@@ -1558,7 +1559,7 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   {
     elapsed = 0;
     fDS.fill(0);
-  }*/
+  }
   
   //impedance param
   double massHose = 7.04, part = 0.32;
@@ -1574,7 +1575,7 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   posImp = (((dt * dt) / m_) * (flw - (fd - fDS) - ((c_ / dt) * (lwLoCur - lwLoPre)))) + 2 * lwLoCur - lwLoPre;
   posImp(1) = lwLoPre(1);//keep y as a constant value
   lwLoPre = lwCurPos;
-  //lwDesired = (cur lw + last lwDes + cur lwDes) This is for compensating the fluctuation caused by hand force
+  //This is for compensating the fluctuation caused by hand force
   lwDes = (lwCurPos + lwDesPre + posImp)/3; 
   
   //set constraints 

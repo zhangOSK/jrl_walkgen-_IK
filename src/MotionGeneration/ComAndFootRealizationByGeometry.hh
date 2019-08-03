@@ -116,8 +116,8 @@ namespace PatternGeneratorJRL
      Eigen::VectorXd & CurrentVelocity,
      Eigen::VectorXd & CurrentAcceleration,
      unsigned long int IterationNumber,
-     int Stage);
-     //const FootAbsolutePosition & InitLeftFootPosition);
+     int Stage,
+     const FootAbsolutePosition & leftFootAbsolute); //footabso
 
     /*! \name Initialization of the walking.
       @{
@@ -207,11 +207,11 @@ namespace PatternGeneratorJRL
     void IKwithImpedanceOnLeftArm(Eigen::VectorXd & qArml,
                         Eigen::Vector3d & lwLoPre,
                         Eigen::Vector3d & lwDesPre, 
-                        //const FootAbsolutePosition & InitLeftFootPosition,
+                        const FootAbsolutePosition & leftFootAbsolute,
                         Eigen::VectorXd & aCoMSpeed);
     Eigen::Vector3d ImpHandPos(Eigen::Vector3d & lwLoPre,
                Eigen::Vector3d & lwDesPre, 
-               //const FootAbsolutePosition & InitLeftFootPosition,
+               const FootAbsolutePosition & leftFootAbsolute,
                Eigen::VectorXd & aCoMSpeed);
 
     /*! This method returns the final COM pose matrix 

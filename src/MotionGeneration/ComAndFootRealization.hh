@@ -133,7 +133,8 @@ namespace PatternGeneratorJRL
      Eigen::VectorXd &CurrentVelocity,
      Eigen::VectorXd &CurrentAcceleration,
      unsigned long int IterationNumber,
-     int Stage) =0;
+     int Stage,
+     const FootAbsolutePosition & leftFootAbsolute) =0; //footabso
 
     /*! Returns the waist position associate to the current
       @} */
