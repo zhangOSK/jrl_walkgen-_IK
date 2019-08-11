@@ -1446,23 +1446,19 @@ void ComAndFootRealizationByGeometry::
   const std::string filename = "/home/ang/Downloads/talos_data/urdf/talos_arm.urdf";
   pinocchio::urdf::buildModel(filename, modelArm);
   pinocchio::Data dataArm(modelArm);
-
-  //pinocchio::JointIndex leftWristJoint = getPinocchioRobot()->leftWrist();
   Eigen::Vector3d xdes;   
   Eigen::VectorXd q;
   q.resize(modelArm.nq,1);
+
   for (unsigned int k=0; k<q.size(); k++)
   {
     q(k) = qArml(k);
   }
-
   if (q(0) == 0 && q(1) == 0 && q(2) == 0 && q(3) == 0 && q(4) == 0 && q(5) == 0)
   {
-    q << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1;
+    q << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1; //half sitting pose
   }
-  std::cerr<<"init q = "<< q << std::endl;
-
-  //q << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1; //half sitting pose
+  
   // Size of qArml in pinocchiorobot.cpp is 6, but in talos, the size of q arm is 7.
   if(q.size() != qArml.size())
   {
@@ -1481,7 +1477,7 @@ void ComAndFootRealizationByGeometry::
 
   // pos in local left wrist frame OR leftShoulder frame
   xdes = ImpHandPos(lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, jointRoot, lwCurrentShoulderFrame); 
-  std::cout << "xdes = " << xdes(0) << std::endl;
+  std::cerr << "xdes = " << xdes(0) << std::endl;
   
   //ODEBUG4(xdes[0]<<" "<< xdes[1]<<" "<<xdes[2], "HandImp.txt");
 
@@ -1499,19 +1495,21 @@ void ComAndFootRealizationByGeometry::
     pinocchio::forwardKinematics(modelArm,dataArm,q);  
     const Eigen::Vector3d & x   = dataArm.oMi[JOINT_ID].translation();
     const Eigen::Matrix3d & R   = dataArm.oMi[JOINT_ID].rotation();
-    err = R.transpose() * x - xdes;// transform x to local left wrist frame
+    err = R.transpose() * x - xdes;// transform x to shoulder frame, xdes is in shoulder frame;
     if(err.norm() < eps)
     {
-        std::cerr << "Convergence achieved!" << std::endl;
+        //std::cerr << "Convergence achieved!" << std::endl;
         for (unsigned int j=0; j<qArml.size(); j++)
         {
           qArml(j) = q(j);
         }
+        //std::cerr << "qArml = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<
+        //qArml(3) << ", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
         break;
     }
     if (i >= IT_MAX)
     {
-        std::cout << "\nWarning: the iterative algorithm has not reached convergence to the desired precision" << std::endl;
+        std::cerr << "\nWarning: the iterative algorithm has not reached convergence to the desired precision" << std::endl;
         for (unsigned int j=0; j<qArml.size(); j++)
         {
           qArml(j) = q(j);
@@ -1522,7 +1520,6 @@ void ComAndFootRealizationByGeometry::
     const Eigen::VectorXd v     = - svd.compute(J.topRows<3>()).solve(err);
     q = pinocchio::integrate(modelArm,q,v*DT);
   }
-  std::cout<<"qArml = "<< qArml << std::endl;
 }
 Eigen::Vector3d ComAndFootRealizationByGeometry::
     ImpHandPos(Eigen::Vector3d & lwLoPre,
@@ -1533,15 +1530,10 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
                Eigen::Vector3d & lwCurPos)
 {
   pinocchio::JointIndex waistJoint = getPinocchioRobot()->waist();
-  //pinocchio::JointIndex leftWristJoint = getPinocchioRobot()->leftWrist();
   pinocchio::SE3 waistSE3 = getPinocchioRobot()->Data()->oMi[waistJoint];
-  //pinocchio::SE3 leftWristSE3 = getPinocchioRobot()->Data()->oMi[leftWristJoint];
   const Eigen::Vector3d & waistCurPos   = waistSE3.translation(); //world frame?
   const Eigen::Matrix3d & waistR        = waistSE3.rotation();
-  //const Eigen::Vector3d & lwCurPos   = leftWristSE3.translation();
-  //const Eigen::Matrix3d & lwR        = leftWristSE3.rotation();
   Eigen::Vector3d waistLo = waistR.transpose() * waistCurPos; 
-  //Eigen::Vector3d lwRobotCur = lwR.transpose() * lwCurPos; // LeftWrist local robot frame,current
 
   ///////////////////////////////
   /* pinocchio::SE3 lShoulderSE3 = getPinocchioRobot()->Data()->oMi[jointRoot]; //jointRoot = 16
@@ -1573,8 +1565,7 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   double waistInitX = 0.0;
   double distWaistX_com = waistLo(0) - waistInitX; 
   double distWaistX = leftFootAbsolute.x - waistInitX; 
-  std::cout << "\n distwaist= " << distWaistX_com << std::endl;
-  std::cout << "\n distfoot= " << distWaistX << std::endl;
+  // waist is local frame, use foot to predict distance!
   double flwX = 14 * distWaistX + 5; //Imitate real hand force. To do : fluctuation, and Z
   flw(0) = flwX;
   //double flwZ = 14 * distWaistX + 5 - 15; //hand f in z axis
@@ -1610,7 +1601,6 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   Eigen::Vector3d posImp;
   posImp = (((dt * dt) / m_) * (flw_shoulder - (fd - fDS) - ((c_ / dt) * (lwCurPos - lwLoPre)))) 
            + 2 * lwCurPos - lwLoPre;
-  std::cerr<<"posImp = "<<posImp(0) << std::endl;
   posImp(1) = lwLoPre(1);//keep y as a constant value
   posImp(2) = lwLoPre(2);
   lwLoPre = lwCurPos;
