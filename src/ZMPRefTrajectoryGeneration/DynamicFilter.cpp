@@ -387,7 +387,7 @@ zmpmb
  Eigen::VectorXd& acceleration,
  Eigen::Vector3d & zmpmb)
 {
-  PR_->computeInverseDynamics(configuration,velocity,acceleration);
+  PR_->computeInverseDynamicsFext(configuration,velocity,acceleration);
   PR_->zeroMomentumPoint(zmpmb);
   return 0 ;
 }
@@ -517,7 +517,7 @@ ComputeZMPMB
 
   if(iteration>0)
     {
-      PR_->computeInverseDynamics(ZMPMBConfiguration_,
+      PR_->computeInverseDynamicsFext(ZMPMBConfiguration_,
                                   ZMPMBVelocity_,
                                   ZMPMBAcceleration_);
 

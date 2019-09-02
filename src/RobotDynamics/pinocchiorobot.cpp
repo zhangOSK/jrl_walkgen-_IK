@@ -8,6 +8,8 @@ using namespace std;
 #include "pinocchio/algorithm/rnea.hpp"
 #include "pinocchio/algorithm/kinematics.hpp"
 #include "pinocchio/algorithm/center-of-mass.hpp"
+
+#include "pinocchio/spatial/fwd.hpp"
 using namespace PatternGeneratorJRL;
 
 class Joint_shortname : public boost::static_visitor<std::string>
@@ -551,6 +553,50 @@ computeInverseDynamics
   // performing the inverse dynamics
   m_tau = pinocchio::rnea(*m_robotModel,*m_robotData,m_qpino,m_vpino,m_apino);
 }
+
+//-----------------overload rnea with fext-------------------
+void PinocchioRobot::
+computeInverseDynamicsFext
+(Eigen::VectorXd & q,
+ Eigen::VectorXd & v,
+ Eigen::VectorXd & a)
+{
+  //  RPYToSpatialFreeFlyer(m_rpy,m_drpy,m_ddrpy,
+  //                        m_quat,m_omega,m_domega);
+  // euler to quaternion :
+  m_quat = Eigen::Quaterniond
+    (Eigen::AngleAxisd(q(5), Eigen::Vector3d::UnitZ()) *
+     Eigen::AngleAxisd(q(4), Eigen::Vector3d::UnitY()) *
+     Eigen::AngleAxisd(q(3), Eigen::Vector3d::UnitX()) ) ;
+  for(unsigned i=0; i<3 ; ++i)
+    {
+      m_qpino(i) = q(i);
+    }
+  m_rot = m_quat.toRotationMatrix().transpose() ;
+  m_vpino.segment<3>(0) = m_rot * m_vpino.segment<3>(0) ;
+  m_apino.segment<3>(0) = m_rot * m_apino.segment<3>(0) ;
+
+  // fill up m_q following the pinocchio standard : [pos quarternion DoFs]
+  m_qpino(3) = m_quat.x() ;
+  m_qpino(4) = m_quat.y() ;
+  m_qpino(5) = m_quat.z() ;
+  m_qpino(6) = m_quat.w() ;
+
+  // fill up the velocity and acceleration vectors
+  m_vpino = v;
+  m_apino = a;
+
+  container::aligned_vector<Force> fext(m_robotModel->joints.size(), Force::Zero());
+  pinocchio::FrameIndex lw = m_robotModel->getFrameId("l_wrist");
+  m_leftWrist = m_robotModel->frames[lw].parent ;
+  Force flw = Force::Zero();
+  //flw(0) = distCom * 14 +5;
+  fext[m_leftWrist] = flw;
+
+  // performing the inverse dynamics
+  m_tau = pinocchio::rnea(*m_robotModel,*m_robotData,m_qpino,m_vpino,m_apino,fext);
+}
+//-----------------------------------------------------------
 
 std::vector<pinocchio::JointIndex>
 PinocchioRobot::fromRootToIt(pinocchio::JointIndex it)

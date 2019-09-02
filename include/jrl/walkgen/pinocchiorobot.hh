@@ -74,6 +74,9 @@ namespace PatternGeneratorJRL
     void computeInverseDynamics(Eigen::VectorXd & q,
                                 Eigen::VectorXd & v,
                                 Eigen::VectorXd & a);
+    void computeInverseDynamicsFext(Eigen::VectorXd & q,
+                                Eigen::VectorXd & v,
+                                Eigen::VectorXd & a);
 
     /// Compute the geometry of the robot.
     void computeForwardKinematics();

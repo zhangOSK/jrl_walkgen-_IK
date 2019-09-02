@@ -921,7 +921,7 @@ ComputePostureForGivenCoMAndFeetPosture
          aLeftFoot);
 
       //Impedance controller of left arm
-      IKwithImpedanceOnLeftArm(qArml, lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, m_LeftShoulder);
+      IKwithImpedanceOnLeftArm(qArml, lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, m_LeftShoulder);
     }
 
   // For stepping over modify the waist position and
@@ -1439,6 +1439,7 @@ void ComAndFootRealizationByGeometry::
                              Eigen::Vector3d & lwDesPre, 
                              const FootAbsolutePosition & leftFootAbsolute,
                              Eigen::VectorXd & aCoMSpeed,
+                             Eigen::VectorXd & aCoMPosition,
                              const pinocchio::JointIndex & jointRoot
     )
 {
@@ -1476,8 +1477,8 @@ void ComAndFootRealizationByGeometry::
   Eigen::Vector3d lwCurrentShoulderFrame = R0.transpose() * x0;
 
   // pos in local left wrist frame OR leftShoulder frame
-  xdes = ImpHandPos(lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, jointRoot, lwCurrentShoulderFrame); 
-  std::cerr << "xdes = " << xdes(0) << std::endl;
+  xdes = ImpHandPos(lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, lwCurrentShoulderFrame); 
+  //std::cerr << "xdes = " << xdes(0) << std::endl;
   
   //ODEBUG4(xdes[0]<<" "<< xdes[1]<<" "<<xdes[2], "HandImp.txt");
 
@@ -1526,14 +1527,14 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
                Eigen::Vector3d & lwDesPre, 
                const FootAbsolutePosition & leftFootAbsolute,
                Eigen::VectorXd & aCoMSpeed,
-               const pinocchio::JointIndex & jointRoot,
+               Eigen::VectorXd & aCoMPosition,
                Eigen::Vector3d & lwCurPos)
 {
   pinocchio::JointIndex waistJoint = getPinocchioRobot()->waist();
   pinocchio::SE3 waistSE3 = getPinocchioRobot()->Data()->oMi[waistJoint];
   const Eigen::Vector3d & waistCurPos   = waistSE3.translation(); //world frame?
   const Eigen::Matrix3d & waistR        = waistSE3.rotation();
-  Eigen::Vector3d waistLo = waistR.transpose() * waistCurPos; 
+  //Eigen::Vector3d waistLo = waistR.transpose() * waistCurPos; 
 
   ///////////////////////////////
   /* pinocchio::SE3 lShoulderSE3 = getPinocchioRobot()->Data()->oMi[jointRoot]; //jointRoot = 16
@@ -1555,7 +1556,7 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   /////////////////////////////// */
 
   Eigen::Vector3d lwDes, flw, fd, fDS, flw_shoulder;
-  int elapsed = 0;
+  //int elapsed = 0;
   double vel_ = aCoMSpeed(0);
   lwDes.fill(0);
   flw.fill(0); //Real force collectted from left wrist sensor
@@ -1563,8 +1564,8 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   fDS.fill(0);
   flw_shoulder.fill(0);
   double waistInitX = 0.0;
-  double distWaistX_com = waistLo(0) - waistInitX; 
-  double distWaistX = leftFootAbsolute.x - waistInitX; 
+  //double distWaistX = leftFootAbsolute.x - waistInitX; 
+  double distWaistX = aCoMPosition(0);
   // waist is local frame, use foot to predict distance!
   double flwX = 14 * distWaistX + 5; //Imitate real hand force. To do : fluctuation, and Z
   flw(0) = flwX;
@@ -1575,16 +1576,17 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   //robot pulls the hose only at DS
   if(leftFootAbsolute.stepType == 10) //DS, can be walking or not walking
   {
-    if (elapsed == 0 || elapsed > 20) // elapsed > 20, means robot is in DS but not walking
+    /*if (elapsed == 0 || elapsed > 20) // elapsed > 20, means robot is in DS but not walking
     {
       vel_ = 0;
-    }
-    fDS(0) = vel_*(27000);//pulling force in DS, related with the velocity
-    elapsed = elapsed + 1;
+    }*/
+    //fDS(0) = vel_*(27000);//pulling force in DS, related with the velocity
+    fDS(0) = 0.1 * 27000;
+    //elapsed = elapsed + 1;
   }
   else
   {
-    elapsed = 0;
+    //elapsed = 0;
     fDS.fill(0);
   }
   
@@ -1599,14 +1601,20 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   double m_ = 1.0, c_ = 5.0;
 
   Eigen::Vector3d posImp;
-  posImp = (((dt * dt) / m_) * (flw_shoulder - (fd - fDS) - ((c_ / dt) * (lwCurPos - lwLoPre)))) 
+  posImp.fill(0);
+  //posImp = (((dt * dt) / m_) * (flw_shoulder - (fd - fDS) - ((c_ / dt) * (lwCurPos - lwLoPre)))) 
+  //         + 2 * lwCurPos - lwLoPre;
+  //--------design a impedance wich move lw 20cm in local frame-----------
+  posImp = (((dt * dt) / m_) * (-0.3*flw_shoulder + 0.06*fDS - ((c_ / dt) * (lwCurPos - lwLoPre)))) 
            + 2 * lwCurPos - lwLoPre;
   posImp(1) = lwLoPre(1);//keep y as a constant value
   posImp(2) = lwLoPre(2);
   lwLoPre = lwCurPos;
+  std::cout<<flw_shoulder(0)<<" , " << fDS(0) <<" ,  "<<posImp(0)<<std::endl;
 
   //This is for compensating the fluctuation caused by hand force
-  lwDes = (lwCurPos + lwDesPre + posImp)/3; 
+  //lwDes = (lwCurPos + lwDesPre + posImp)/3; 
+  lwDes = posImp;
 
   //-----------set y,z manually, because the initial q is a bit strange -------
   lwDes(1) = 0.332;

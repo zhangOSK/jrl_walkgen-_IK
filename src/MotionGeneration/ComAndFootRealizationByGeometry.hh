@@ -209,12 +209,13 @@ namespace PatternGeneratorJRL
                         Eigen::Vector3d & lwDesPre, 
                         const FootAbsolutePosition & leftFootAbsolute,
                         Eigen::VectorXd & aCoMSpeed,
+                        Eigen::VectorXd & aCoMPosition,
                         const pinocchio::JointIndex & jointRoot);
     Eigen::Vector3d ImpHandPos(Eigen::Vector3d & lwLoPre,
                Eigen::Vector3d & lwDesPre, 
                const FootAbsolutePosition & leftFootAbsolute,
                Eigen::VectorXd & aCoMSpeed,
-               const pinocchio::JointIndex & jointRoot,
+               Eigen::VectorXd & aCoMPosition,
                Eigen::Vector3d & lwCurrentShoulderFrame);
 
     /*! This method returns the final COM pose matrix 
