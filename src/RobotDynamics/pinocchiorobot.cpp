@@ -9,7 +9,8 @@ using namespace std;
 #include "pinocchio/algorithm/kinematics.hpp"
 #include "pinocchio/algorithm/center-of-mass.hpp"
 
-#include "pinocchio/spatial/fwd.hpp"
+#include "pinocchio/multibody/data.hpp"
+//using namespace pinocchio;
 using namespace PatternGeneratorJRL;
 
 class Joint_shortname : public boost::static_visitor<std::string>
@@ -586,10 +587,11 @@ computeInverseDynamicsFext
   m_vpino = v;
   m_apino = a;
 
-  container::aligned_vector<Force> fext(m_robotModel->joints.size(), Force::Zero());
+  //container::aligned_vector<Force> fext(m_robotModel->joints.size(), Force::Zero());
+  pinocchio::container::aligned_vector<pinocchio::Force> fext(m_robotModel->joints.size(), pinocchio::Force::Zero());
   pinocchio::FrameIndex lw = m_robotModel->getFrameId("l_wrist");
   m_leftWrist = m_robotModel->frames[lw].parent ;
-  Force flw = Force::Zero();
+  pinocchio::Force flw = pinocchio::Force::Zero();
   //flw(0) = distCom * 14 +5;
   fext[m_leftWrist] = flw;
 
