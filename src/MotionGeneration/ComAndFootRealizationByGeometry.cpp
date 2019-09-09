@@ -901,6 +901,7 @@ ComputePostureForGivenCoMAndFeetPosture
       qArmr[i] = 0.0;
       qArml[i] = 0.0;
     }
+  qArml << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1; //half sitting pose
 
   if (GetStepStackHandler()->GetWalkMode()<3)
     {
@@ -920,6 +921,12 @@ ComputePostureForGivenCoMAndFeetPosture
          aRightFoot,
          aLeftFoot);
 
+      //Get q of current config?
+      for(unsigned int i=0; i<qArml.size(); i++)
+        qArml[i] = CurrentConfiguration[m_LeftArmIndexinConfiguration[i]];
+
+      std::cout << "qArml0 = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<
+      qArml(3) << ", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
       //Impedance controller of left arm
       IKwithImpedanceOnLeftArm(qArml, lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, m_LeftShoulder);
     }
@@ -981,6 +988,9 @@ ComputePostureForGivenCoMAndFeetPosture
 
   for(unsigned int i=0; i<qArmr.size(); i++)
     CurrentConfiguration[m_RightArmIndexinConfiguration[i]] = qArmr[i];
+
+  std::cout << "QARML = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<
+  qArml(3) << ", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
 
   for(unsigned int i=0; i<qArml.size(); i++)
     CurrentConfiguration[m_LeftArmIndexinConfiguration[i]] = qArml[i];
@@ -1459,30 +1469,23 @@ void ComAndFootRealizationByGeometry::
   {
     q << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1; //half sitting pose
   }
+  //std::cout << "q = " << q(0) << ", " << q(1) << ", " << q(2) << ", " <<
+  //q(3) << ", " << q(4) << ", " << q(5) << ", " << q(6) << std::endl;
   
-  // Size of qArml in pinocchiorobot.cpp is 6, but in talos, the size of q arm is 7.
-  if(q.size() != qArml.size())
-  {
-    std::cerr<<"q is not 7" << std::endl;
-    q(0) = 0.25847; //may cause problem if q(0) is optimized later
-    for (int i=0;i<6;i++)
-    {
-      q(i+1) = qArml(i);
-    }
-  }
   // To get current lw in shoulder frame
   pinocchio::forwardKinematics(modelArm,dataArm,q);  
   const Eigen::Vector3d & x0   = dataArm.oMi[7].translation();
   const Eigen::Matrix3d & R0   = dataArm.oMi[7].rotation();
   Eigen::Vector3d lwCurrentShoulderFrame = R0.transpose() * x0;
+  //std::cout<<lwCurrentShoulderFrame(0)<<",, ";
 
   // pos in local left wrist frame OR leftShoulder frame
   xdes = ImpHandPos(lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, lwCurrentShoulderFrame); 
-  //std::cerr << "xdes = " << xdes(0) << std::endl;
+  std::cout << "xdes = " << xdes(0) << std::endl;
   
   //ODEBUG4(xdes[0]<<" "<< xdes[1]<<" "<<xdes[2], "HandImp.txt");
 
-  const double eps      = 1e-2;// 1e-4
+  const double eps      = 1e-3;// 1e-4
   const int IT_MAX      = 1000;
   const double DT       = 5e-3;
   pinocchio::Data::Matrix6x J(6,modelArm.nv); J.setZero(); //7 joints in arm
@@ -1504,8 +1507,6 @@ void ComAndFootRealizationByGeometry::
         {
           qArml(j) = q(j);
         }
-        //std::cerr << "qArml = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<
-        //qArml(3) << ", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
         break;
     }
     if (i >= IT_MAX)
@@ -1528,35 +1529,15 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
                const FootAbsolutePosition & leftFootAbsolute,
                Eigen::VectorXd & aCoMSpeed,
                Eigen::VectorXd & aCoMPosition,
-               Eigen::Vector3d & lwCurPos)
+               Eigen::Vector3d & lwCurPos
+               )
 {
-  pinocchio::JointIndex waistJoint = getPinocchioRobot()->waist();
-  pinocchio::SE3 waistSE3 = getPinocchioRobot()->Data()->oMi[waistJoint];
-  const Eigen::Vector3d & waistCurPos   = waistSE3.translation(); //world frame?
-  const Eigen::Matrix3d & waistR        = waistSE3.rotation();
-  //Eigen::Vector3d waistLo = waistR.transpose() * waistCurPos; 
-
-  ///////////////////////////////
-  /* pinocchio::SE3 lShoulderSE3 = getPinocchioRobot()->Data()->oMi[jointRoot]; //jointRoot = 16
-  const Eigen::Vector3d & lShoulderPos   = lShoulderSE3.translation(); //robot frame
-  const Eigen::Matrix3d & lShoulderR     = lShoulderSE3.rotation();
-  // p_hand - p_arm = R^T * (p^a_h), 
-  Eigen::Vector3d lwShoulderFrame = lwRobotCur - lShoulderPos; //leftWrist in Shoulder frame
-  std::cout << "\n lwshoulderFrame = " << lwShoulderFrame << std::endl;// init value is [0.07,0.18,-0.57] */
-
-  /*//calculate flw in shoulder frame
-  pinocchio::Model modelArm;
-  const std::string filename = "/home/ang/Downloads/talos_data/urdf/talos_arm.urdf";
-  pinocchio::urdf::buildModel(filename, modelArm);
-  pinocchio::Data dataArm(modelArm);
-  //pinocchio::forwardKinematics(modelArm,dataArm,q);  
-  //const Eigen::Vector3d & x   = dataArm.oMi[7].translation();
-  const Eigen::Matrix3d & R   = dataArm.oMi[7].rotation();
-
-  /////////////////////////////// */
+  //pinocchio::JointIndex waistJoint = getPinocchioRobot()->waist();
+  //pinocchio::SE3 waistSE3 = getPinocchioRobot()->Data()->oMi[waistJoint];
+  //const Eigen::Vector3d & waistCurPos   = waistSE3.translation(); //world frame?
+  //const Eigen::Matrix3d & waistR        = waistSE3.rotation();
 
   Eigen::Vector3d lwDes, flw, fd, fDS, flw_shoulder;
-  //int elapsed = 0;
   double vel_ = aCoMSpeed(0);
   lwDes.fill(0);
   flw.fill(0); //Real force collectted from left wrist sensor
@@ -1565,7 +1546,7 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   flw_shoulder.fill(0);
   double waistInitX = 0.0;
   //double distWaistX = leftFootAbsolute.x - waistInitX; 
-  double distWaistX = aCoMPosition(0);
+  double distWaistX = aCoMPosition(0) - waistInitX;
   // waist is local frame, use foot to predict distance!
   double flwX = 14 * distWaistX + 5; //Imitate real hand force. To do : fluctuation, and Z
   flw(0) = flwX;
@@ -1576,17 +1557,17 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   //robot pulls the hose only at DS
   if(leftFootAbsolute.stepType == 10) //DS, can be walking or not walking
   {
-    /*if (elapsed == 0 || elapsed > 20) // elapsed > 20, means robot is in DS but not walking
+    if (vel_< 0.05) // elapsed > 20, means robot is in DS but not walking
     {
       vel_ = 0;
-    }*/
-    //fDS(0) = vel_*(27000);//pulling force in DS, related with the velocity
-    fDS(0) = 0.1 * 27000;
-    //elapsed = elapsed + 1;
+      fDS(0) = vel_*(27000);//pulling force in DS, related with the velocity
+    }
+    else{
+      fDS(0) = 0.1 * 27000;
+    }
   }
   else
   {
-    //elapsed = 0;
     fDS.fill(0);
   }
   
@@ -1610,7 +1591,7 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   posImp(1) = lwLoPre(1);//keep y as a constant value
   posImp(2) = lwLoPre(2);
   lwLoPre = lwCurPos;
-  std::cout<<flw_shoulder(0)<<" , " << fDS(0) <<" ,  "<<posImp(0)<<std::endl;
+  //std::cout<<flw_shoulder(0)<<" ,,, " << fDS(0) <<" ,,,,  "<<posImp(0)<<std::endl;
 
   //This is for compensating the fluctuation caused by hand force
   //lwDes = (lwCurPos + lwDesPre + posImp)/3; 
@@ -1619,7 +1600,6 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   //-----------set y,z manually, because the initial q is a bit strange -------
   lwDes(1) = 0.332;
   lwDes(2) = -0.335;
-  //----------with init q(7), translation of lw in shoulder is [0, 1, 0]-------
   
   //set constraints 
   if (lwDes(0) > 0.2)

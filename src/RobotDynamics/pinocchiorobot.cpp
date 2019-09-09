@@ -593,7 +593,7 @@ computeInverseDynamicsFext
   m_leftWrist = m_robotModel->frames[lw].parent ;
   pinocchio::Force flw = pinocchio::Force::Zero();
   //flw(0) = distCom * 14 +5;
-  fext[m_leftWrist] = flw;
+  fext[m_leftWrist] = flw; //!!! TO DO: check if there are force(gravity) in other joints?
 
   // performing the inverse dynamics
   m_tau = pinocchio::rnea(*m_robotModel,*m_robotData,m_qpino,m_vpino,m_apino,fext);

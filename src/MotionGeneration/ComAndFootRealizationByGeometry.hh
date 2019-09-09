@@ -216,7 +216,8 @@ namespace PatternGeneratorJRL
                const FootAbsolutePosition & leftFootAbsolute,
                Eigen::VectorXd & aCoMSpeed,
                Eigen::VectorXd & aCoMPosition,
-               Eigen::Vector3d & lwCurrentShoulderFrame);
+               Eigen::Vector3d & lwCurrentShoulderFrame
+               );
 
     /*! This method returns the final COM pose matrix 
       after the second stage of control. */
