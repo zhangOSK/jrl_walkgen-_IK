@@ -104,6 +104,14 @@ ComAndFootRealizationByGeometry(PatternGeneratorInterfacePrivate *aPGI)
   m_UpperBodyMotion[2]=0.0;
 
   m_COGInitialAnkles.setZero();
+
+  lwLoPre(0) = 0.045, lwLoPre(1) = 0.332, lwLoPre(2) = -0.335; //lw in shoulder frame; half-sitting pose
+  m_lwLoPre = lwLoPre;
+  m_lwCur = m_lwLoPre;
+  lwDesPre = lwLoPre; //To do: remove lwDesPre
+  lwCur = lwLoPre;
+  m_qArml.resize(7);
+  m_qArml << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1;
 }
 
 void ComAndFootRealizationByGeometry::
@@ -272,14 +280,20 @@ Initialization()
                          m_LeftArmIndexinVelocity,
                          m_LeftShoulder);
 
-  //init lw pre pos
-  /* pinocchio::JointIndex leftWristJoint = getPinocchioRobot()->leftWrist();
+  /*  //init lw pre pos
+   pinocchio::JointIndex leftWristJoint = getPinocchioRobot()->leftWrist();
   pinocchio::SE3 leftWristSE3 = getPinocchioRobot()->Data()->oMi[leftWristJoint];
   Eigen::Vector3d lwCurPos   = leftWristSE3.translation();
   Eigen::Matrix3d lwR        = leftWristSE3.rotation();
-  lwLoPre = lwR.transpose() * lwCurPos; // LeftWrist local frame*/
+  lwLoPre = lwR.transpose() * lwCurPos; // LeftWrist local frame   
+  */
+  /*
   lwLoPre(0) = 0.045, lwLoPre(1) = 0.332, lwLoPre(2) = -0.335; //lw in shoulder frame; RP
+  m_lwLoPre = lwLoPre;
+  m_lwCur = m_lwLoPre;
   lwDesPre = lwLoPre; //To do: change it to shoulder frame
+  lwCur = lwLoPre;
+  */
 
   // Create maps for the right hand.
   InitializeMapsForAHand(getPinocchioRobot()->rightWrist(),
@@ -901,7 +915,8 @@ ComputePostureForGivenCoMAndFeetPosture
       qArmr[i] = 0.0;
       qArml[i] = 0.0;
     }
-  qArml << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1; //half sitting pose
+  //qArml << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1;
+  qArml = m_qArml;
 
   if (GetStepStackHandler()->GetWalkMode()<3)
     {
@@ -921,13 +936,6 @@ ComputePostureForGivenCoMAndFeetPosture
          aRightFoot,
          aLeftFoot);
 
-      //Get q of current config?
-      for(unsigned int i=0; i<qArml.size(); i++)
-        qArml[i] = CurrentConfiguration[m_LeftArmIndexinConfiguration[i]];
-
-      std::cout << "qArml0 = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<
-      qArml(3) << ", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
-      //Impedance controller of left arm
       IKwithImpedanceOnLeftArm(qArml, lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, m_LeftShoulder);
     }
 
@@ -989,8 +997,9 @@ ComputePostureForGivenCoMAndFeetPosture
   for(unsigned int i=0; i<qArmr.size(); i++)
     CurrentConfiguration[m_RightArmIndexinConfiguration[i]] = qArmr[i];
 
-  std::cout << "QARML = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<
-  qArml(3) << ", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
+  std::cout << "qArml = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<
+  qArml(3) << std::endl; //", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
+  m_qArml = qArml;
 
   for(unsigned int i=0; i<qArml.size(); i++)
     CurrentConfiguration[m_LeftArmIndexinConfiguration[i]] = qArml[i];
@@ -1460,33 +1469,32 @@ void ComAndFootRealizationByGeometry::
   Eigen::Vector3d xdes;   
   Eigen::VectorXd q;
   q.resize(modelArm.nq,1);
-
   for (unsigned int k=0; k<q.size(); k++)
   {
     q(k) = qArml(k);
   }
-  if (q(0) == 0 && q(1) == 0 && q(2) == 0 && q(3) == 0 && q(4) == 0 && q(5) == 0)
-  {
-    q << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1; //half sitting pose
-  }
-  //std::cout << "q = " << q(0) << ", " << q(1) << ", " << q(2) << ", " <<
-  //q(3) << ", " << q(4) << ", " << q(5) << ", " << q(6) << std::endl;
   
   // To get current lw in shoulder frame
   pinocchio::forwardKinematics(modelArm,dataArm,q);  
   const Eigen::Vector3d & x0   = dataArm.oMi[7].translation();
   const Eigen::Matrix3d & R0   = dataArm.oMi[7].rotation();
   Eigen::Vector3d lwCurrentShoulderFrame = R0.transpose() * x0;
-  //std::cout<<lwCurrentShoulderFrame(0)<<",, ";
+  m_lwCur = lwCurrentShoulderFrame;
+  std::cout<< "lwCur = " << m_lwCur(0) <<", "<<m_lwCur(1) <<", "<<m_lwCur(2)<<"; ";
+  //Eigen::Vector3d lwCurrentShoulderFrame = m_lwCur;
+  lwLoPre = m_lwLoPre;
+  m_lwLoPre = m_lwCur;
 
   // pos in local left wrist frame OR leftShoulder frame
   xdes = ImpHandPos(lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, lwCurrentShoulderFrame); 
   std::cout << "xdes = " << xdes(0) << std::endl;
+
+  //m_lwCur = xdes;
   
   //ODEBUG4(xdes[0]<<" "<< xdes[1]<<" "<<xdes[2], "HandImp.txt");
 
-  const double eps      = 1e-3;// 1e-4
-  const int IT_MAX      = 1000;
+  const double eps      = 1e-2;
+  const int IT_MAX      = 50; //1000
   const double DT       = 5e-3;
   pinocchio::Data::Matrix6x J(6,modelArm.nv); J.setZero(); //7 joints in arm
   unsigned int svdOptions = Eigen::ComputeThinU | Eigen::ComputeThinV;
@@ -1506,6 +1514,7 @@ void ComAndFootRealizationByGeometry::
         for (unsigned int j=0; j<qArml.size(); j++)
         {
           qArml(j) = q(j);
+
         }
         break;
     }
@@ -1515,11 +1524,12 @@ void ComAndFootRealizationByGeometry::
         for (unsigned int j=0; j<qArml.size(); j++)
         {
           qArml(j) = q(j);
+ 
         }
         break;
     }
     pinocchio::jointJacobian(modelArm,dataArm,q,JOINT_ID,J);;
-    const Eigen::VectorXd v     = - svd.compute(J.topRows<3>()).solve(err);
+    const Eigen::VectorXd v     = - svd.compute(J.topRows<3>()).solve(err * 0.01);
     q = pinocchio::integrate(modelArm,q,v*DT);
   }
 }
@@ -1532,11 +1542,6 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
                Eigen::Vector3d & lwCurPos
                )
 {
-  //pinocchio::JointIndex waistJoint = getPinocchioRobot()->waist();
-  //pinocchio::SE3 waistSE3 = getPinocchioRobot()->Data()->oMi[waistJoint];
-  //const Eigen::Vector3d & waistCurPos   = waistSE3.translation(); //world frame?
-  //const Eigen::Matrix3d & waistR        = waistSE3.rotation();
-
   Eigen::Vector3d lwDes, flw, fd, fDS, flw_shoulder;
   double vel_ = aCoMSpeed(0);
   lwDes.fill(0);
@@ -1585,21 +1590,15 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   posImp.fill(0);
   //posImp = (((dt * dt) / m_) * (flw_shoulder - (fd - fDS) - ((c_ / dt) * (lwCurPos - lwLoPre)))) 
   //         + 2 * lwCurPos - lwLoPre;
-  //--------design a impedance wich move lw 20cm in local frame-----------
-  posImp = (((dt * dt) / m_) * (-0.3*flw_shoulder + 0.06*fDS - ((c_ / dt) * (lwCurPos - lwLoPre)))) 
+  //--------design a impedance wich move lw 20cm in local frame------------0.3flw, 0.06fds
+  posImp = (((dt * dt) / m_) * (-0.4*flw_shoulder + 0.2*fDS - ((c_ / dt) * (lwCurPos - lwLoPre)))) 
            + 2 * lwCurPos - lwLoPre;
   posImp(1) = lwLoPre(1);//keep y as a constant value
   posImp(2) = lwLoPre(2);
-  lwLoPre = lwCurPos;
+  std::cout<<"lwLoPre = "<<lwLoPre(0)<<" , ";
   //std::cout<<flw_shoulder(0)<<" ,,, " << fDS(0) <<" ,,,,  "<<posImp(0)<<std::endl;
 
-  //This is for compensating the fluctuation caused by hand force
-  //lwDes = (lwCurPos + lwDesPre + posImp)/3; 
   lwDes = posImp;
-
-  //-----------set y,z manually, because the initial q is a bit strange -------
-  lwDes(1) = 0.332;
-  lwDes(2) = -0.335;
   
   //set constraints 
   if (lwDes(0) > 0.2)
@@ -1620,6 +1619,5 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
     lwDes(2) = -0.3 + waistLo(2); 
   }*/
 
-  lwDesPre = lwDes;
   return lwDes;
 }

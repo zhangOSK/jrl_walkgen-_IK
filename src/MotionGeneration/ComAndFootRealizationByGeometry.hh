@@ -598,7 +598,9 @@ namespace PatternGeneratorJRL
     bool ShiftFoot_ ;
 
     /*parameters for impedance control*/
-    Eigen::Vector3d lwLoPre, lwDesPre;
+    Eigen::Vector3d lwLoPre, lwDesPre, lwCur;
+    Eigen::Vector3d m_lwLoPre, m_lwCur;
+    Eigen::VectorXd m_qArml;
   };
 
   ostream & operator <<(ostream &os,const ComAndFootRealization &obj);
