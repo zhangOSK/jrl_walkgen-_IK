@@ -112,6 +112,7 @@ ComAndFootRealizationByGeometry(PatternGeneratorInterfacePrivate *aPGI)
   lwCur = lwLoPre;
   m_qArml.resize(7);
   m_qArml << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1;
+  m_tCount = 0;
 }
 
 void ComAndFootRealizationByGeometry::
@@ -916,7 +917,20 @@ ComputePostureForGivenCoMAndFeetPosture
       qArml[i] = 0.0;
     }
   //qArml << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1;
-  qArml = m_qArml;
+  //qArml = m_qArml;
+  if(m_tCount == 0)
+   {
+      for(unsigned int i=0; i<qArml.size(); i++)
+        qArml[i] = CurrentConfiguration[m_LeftArmIndexinConfiguration[i]];
+   }
+  else
+   {
+        qArml = m_qArml;
+   }
+
+  std::cout << "qArml = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<"Count = "<<m_tCount<<std::endl;
+  //qArml(3) << std::endl; //", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
+  m_qArml = qArml;
 
   if (GetStepStackHandler()->GetWalkMode()<3)
     {
@@ -997,8 +1011,24 @@ ComputePostureForGivenCoMAndFeetPosture
   for(unsigned int i=0; i<qArmr.size(); i++)
     CurrentConfiguration[m_RightArmIndexinConfiguration[i]] = qArmr[i];
 
-  std::cout << "qArml = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<
-  qArml(3) << std::endl; //", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
+  if(m_tCount == 0)
+   {
+      m_tCount += 1;
+   }
+  else
+   {
+      if(m_tCount < 40)
+      {
+        m_tCount += 1;
+      }
+      if(m_tCount == 40)
+      {
+        m_tCount = 0;
+      }
+   }
+
+  std::cout << "qArml* = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<std::endl;
+  //qArml(3) << std::endl; //", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
   m_qArml = qArml;
 
   for(unsigned int i=0; i<qArml.size(); i++)
@@ -1480,17 +1510,16 @@ void ComAndFootRealizationByGeometry::
   const Eigen::Matrix3d & R0   = dataArm.oMi[7].rotation();
   Eigen::Vector3d lwCurrentShoulderFrame = R0.transpose() * x0;
   m_lwCur = lwCurrentShoulderFrame;
-  std::cout<< "lwCur = " << m_lwCur(0) <<", "<<m_lwCur(1) <<", "<<m_lwCur(2)<<"; ";
+  //std::cout<< "lwCur = " << m_lwCur(0) <<", "<<m_lwCur(1) <<", "<<m_lwCur(2)<<"; "<<std::endl;
   //Eigen::Vector3d lwCurrentShoulderFrame = m_lwCur;
   lwLoPre = m_lwLoPre;
   m_lwLoPre = m_lwCur;
 
   // pos in local left wrist frame OR leftShoulder frame
   xdes = ImpHandPos(lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, lwCurrentShoulderFrame); 
-  std::cout << "xdes = " << xdes(0) << std::endl;
-
+  //std::cout << "xdes = " << xdes(0) << std::endl;
   //m_lwCur = xdes;
-  
+
   //ODEBUG4(xdes[0]<<" "<< xdes[1]<<" "<<xdes[2], "HandImp.txt");
 
   const double eps      = 1e-2;
@@ -1562,7 +1591,7 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   //robot pulls the hose only at DS
   if(leftFootAbsolute.stepType == 10) //DS, can be walking or not walking
   {
-    if (vel_< 0.05) // elapsed > 20, means robot is in DS but not walking
+    if (vel_< 0.05) // suppopse robot is in DS but not walking
     {
       vel_ = 0;
       fDS(0) = vel_*(27000);//pulling force in DS, related with the velocity
@@ -1595,7 +1624,7 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
            + 2 * lwCurPos - lwLoPre;
   posImp(1) = lwLoPre(1);//keep y as a constant value
   posImp(2) = lwLoPre(2);
-  std::cout<<"lwLoPre = "<<lwLoPre(0)<<" , ";
+  //std::cout<<"lwLoPre = "<<lwLoPre(0)<<" , ";
   //std::cout<<flw_shoulder(0)<<" ,,, " << fDS(0) <<" ,,,,  "<<posImp(0)<<std::endl;
 
   lwDes = posImp;

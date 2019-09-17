@@ -253,6 +253,7 @@ namespace PatternGeneratorJRL
     vector<double> sxzmp_, syzmp_ ;
     vector<double> deltaZMPx_, deltaZMPy_ ;
     double CoMHeight_ ;
+    double CoMX;
 
     /// \brief State of the Preview control.
     Eigen::MatrixXd deltax_;

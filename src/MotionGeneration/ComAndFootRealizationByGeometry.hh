@@ -601,6 +601,7 @@ namespace PatternGeneratorJRL
     Eigen::Vector3d lwLoPre, lwDesPre, lwCur;
     Eigen::Vector3d m_lwLoPre, m_lwCur;
     Eigen::VectorXd m_qArml;
+    int m_tCount;
   };
 
   ostream & operator <<(ostream &os,const ComAndFootRealization &obj);

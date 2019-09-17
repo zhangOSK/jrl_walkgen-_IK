@@ -18,6 +18,7 @@ DynamicFilter::DynamicFilter(
   previewWindowSize_   = 0.0 ;
   kajitaPCwindowSize_  = 0.0 ;
   CoMHeight_           = 0.0 ;
+  CoMX                 = 0.0 ;
 
   PR_ = aPR ;
 
@@ -376,6 +377,11 @@ OnLinefilter
 
   OptimalControl(deltaZMP_deq_,outputDeltaCOMTraj_deq_) ;
 
+  std::cout<< outputDeltaCOMTraj_deq_[0].x[0] << ", " << outputDeltaCOMTraj_deq_[0].y[0]<<
+  ", "<< outputDeltaCOMTraj_deq_[1].x[0] <<", " << outputDeltaCOMTraj_deq_[1].y[0]<< ", " <<
+  outputDeltaCOMTraj_deq_[2].x[0] << ", " << outputDeltaCOMTraj_deq_[2].y[0] <<std::endl;
+
+
   return 0 ;
 }
 
@@ -515,6 +521,7 @@ ComputeZMPMB
                      ZMPMBConfiguration_, ZMPMBVelocity_, ZMPMBAcceleration_,
                      samplingPeriod, stage, iteration) ;
 
+  CoMX = inputCoMState.x[0];
   if(iteration>0)
     {
       PR_->computeInverseDynamicsFext(ZMPMBConfiguration_,
