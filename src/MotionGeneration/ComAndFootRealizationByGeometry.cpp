@@ -112,7 +112,6 @@ ComAndFootRealizationByGeometry(PatternGeneratorInterfacePrivate *aPGI)
   lwCur = lwLoPre;
   m_qArml.resize(7);
   m_qArml << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1;
-  m_tCount = 0;
 }
 
 void ComAndFootRealizationByGeometry::
@@ -908,29 +907,17 @@ ComputePostureForGivenCoMAndFeetPosture
                        lqr,
                        AbsoluteWaistPosition);
   /// NOW IT IS ABOUT THE UPPER BODY... ////
-  Eigen::VectorXd qArmr(6);
-  Eigen::VectorXd qArml(7); //change qArml = 7, if there is problem??
+  Eigen::VectorXd qArmr(7);
+  Eigen::VectorXd qArml(7); 
 
   for(unsigned int i=0; i<qArmr.size(); i++)
     {
       qArmr[i] = 0.0;
       qArml[i] = 0.0;
     }
-  //qArml << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1;
-  //qArml = m_qArml;
-  if(m_tCount == 0)
-   {
-      for(unsigned int i=0; i<qArml.size(); i++)
-        qArml[i] = CurrentConfiguration[m_LeftArmIndexinConfiguration[i]];
-   }
-  else
-   {
-        qArml = m_qArml;
-   }
 
-  std::cout << "qArml = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<"Count = "<<m_tCount<<std::endl;
-  //qArml(3) << std::endl; //", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
-  m_qArml = qArml;
+  for(unsigned int i=0; i<qArml.size(); i++)
+    qArml[i] = CurrentConfiguration[m_LeftArmIndexinConfiguration[i]];
 
   if (GetStepStackHandler()->GetWalkMode()<3)
     {
@@ -950,6 +937,10 @@ ComputePostureForGivenCoMAndFeetPosture
          aRightFoot,
          aLeftFoot);
 
+      std::cout << "Ite = " <<IterationNumber;
+      std::cout << ", qArml = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) <<std::endl;
+      //qArml(3) << std::endl; //", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
+      m_qArml = qArml;
       IKwithImpedanceOnLeftArm(qArml, lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, m_LeftShoulder);
     }
 
@@ -1011,28 +1002,14 @@ ComputePostureForGivenCoMAndFeetPosture
   for(unsigned int i=0; i<qArmr.size(); i++)
     CurrentConfiguration[m_RightArmIndexinConfiguration[i]] = qArmr[i];
 
-  if(m_tCount == 0)
-   {
-      m_tCount += 1;
-   }
-  else
-   {
-      if(m_tCount < 40)
-      {
-        m_tCount += 1;
-      }
-      if(m_tCount == 40)
-      {
-        m_tCount = 0;
-      }
-   }
-
-  std::cout << "qArml* = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<std::endl;
+  //std::cout << "qArml* = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<std::endl;
   //qArml(3) << std::endl; //", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
   m_qArml = qArml;
 
   for(unsigned int i=0; i<qArml.size(); i++)
     CurrentConfiguration[m_LeftArmIndexinConfiguration[i]] = qArml[i];
+  std::cout<<"GeoLA=" <<CurrentConfiguration[m_LeftArmIndexinConfiguration[0]]<<","<<CurrentConfiguration[m_LeftArmIndexinConfiguration[1]]<<","
+  <<CurrentConfiguration[m_LeftArmIndexinConfiguration[2]]<<std::endl;
 
   // Update the speed values.
   /* If this is the first call ( stage = 0)
@@ -1523,7 +1500,7 @@ void ComAndFootRealizationByGeometry::
   //ODEBUG4(xdes[0]<<" "<< xdes[1]<<" "<<xdes[2], "HandImp.txt");
 
   const double eps      = 1e-2;
-  const int IT_MAX      = 50; //1000
+  const int IT_MAX      = 10; //1000
   const double DT       = 5e-3;
   pinocchio::Data::Matrix6x J(6,modelArm.nv); J.setZero(); //7 joints in arm
   unsigned int svdOptions = Eigen::ComputeThinU | Eigen::ComputeThinV;

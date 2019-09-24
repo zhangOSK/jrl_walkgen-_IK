@@ -279,6 +279,8 @@ protected:
        aLeftFootPosition, aRightFootPosition,
        conf, vel, acc, iteration, 1,
        m_OneStep.m_LeftFootPosition); //footAbsolute);
+    //---------------test
+    std::cout<<"call Nav, Iter = "<<iteration;
 
     if(m_leftGripper!=0 && m_rightGripper!=0)
       {

@@ -282,6 +282,8 @@ OnLinefilter
   unsigned int N = (unsigned int)inputRightFootTraj_deq_.size() ;
   int inc = (int)round(interpolationPeriod_/controlPeriod_) ;
   unsigned int N1 = (unsigned int)((ZMPMB_vec_.size()-1)*inc +1 );
+  //------------------test
+  std::cout<<",N1 = "<<N1<<std::endl;
   if(useDynamicFilter_)
     {
       for(unsigned int i = 0 ; i < N ; ++i)
@@ -474,10 +476,14 @@ InverseKinematics
       upperPartAcceleration_.setZero();
       previousUpperPartVelocity_.setZero() ;
     }
+  //----------------test
+  std::cout<<"waHeu = "<<walkingHeuristic_<<",  ";
 
   for ( unsigned int i = 0 ; i < larmIdxq_.size() ; ++i )
     {
       configuration(larmIdxq_[i]) = upperPartConfiguration_(larmIdxq_[i]);
+      //-------------test
+      std::cout<<"L="<<configuration(larmIdxq_[i]) <<", " ;
       velocity(larmIdxv_[i])      = upperPartVelocity_(larmIdxv_[i]);
       acceleration(larmIdxv_[i])  = upperPartAcceleration_(larmIdxv_[i]);
     }
