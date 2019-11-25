@@ -122,8 +122,7 @@ CallToComAndFootRealization
  Eigen::VectorXd &CurrentVelocity,
  Eigen::VectorXd &CurrentAcceleration,
  unsigned long int IterationNumber,
- int StageOfTheAlgorithm,
- const FootAbsolutePosition & leftFootAbsolute) //footabso
+ int StageOfTheAlgorithm) 
 {
 
   // New scheme for WPG v3.0
@@ -189,8 +188,7 @@ CallToComAndFootRealization
      CurrentVelocity,
      CurrentAcceleration,
      IterationNumber,
-     StageOfTheAlgorithm,
-     leftFootAbsolute); //footabsolute
+     StageOfTheAlgorithm); 
 
   if (StageOfTheAlgorithm==0)
     {
@@ -244,8 +242,7 @@ OneGlobalStepOfControl
      CurrentVelocity,
      CurrentAcceleration,
      m_NumberOfIterations,
-     0,
-     LeftFootPosition); //footabsolute);
+     0); 
 
   if (m_StageStrategy!=ZMPCOM_TRAJECTORY_FIRST_STAGE_ONLY)
     EvaluateMultiBodyZMP(-1);
@@ -276,8 +273,7 @@ OneGlobalStepOfControl
          CurrentVelocity,
          CurrentAcceleration,
          m_NumberOfIterations - m_NL,
-         1,
-         LeftFootPosition); //footabsolute);
+         1); 
     }
 
   // Here it is assumed that the 4x4 CoM matrix
@@ -677,8 +673,7 @@ SetupIterativePhase
      CurrentVelocity,
      CurrentAcceleration,
      m_NumberOfIterations,
-     0,
-     LeftFootPositions[0]); //FootAbsolutePosition
+     0); 
 
 
   EvaluateMultiBodyZMP(localindex);

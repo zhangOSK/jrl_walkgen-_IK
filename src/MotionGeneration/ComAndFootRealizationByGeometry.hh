@@ -116,6 +116,19 @@ namespace PatternGeneratorJRL
      Eigen::VectorXd & CurrentVelocity,
      Eigen::VectorXd & CurrentAcceleration,
      unsigned long int IterationNumber,
+     int Stage); 
+
+    //add impedance controller in this case
+    bool ComputePostureForGivenCoMAndFeetPosture
+    (Eigen::VectorXd &CoMPosition,
+     Eigen::VectorXd &aCoMSpeed,
+     Eigen::VectorXd &aCoMAcc,
+     Eigen::VectorXd &LeftFoot,
+     Eigen::VectorXd &RightFoot,
+     Eigen::VectorXd & CurrentConfiguration,
+     Eigen::VectorXd & CurrentVelocity,
+     Eigen::VectorXd & CurrentAcceleration,
+     unsigned long int IterationNumber,
      int Stage,
      const FootAbsolutePosition & leftFootAbsolute); //footabso
 
@@ -205,19 +218,16 @@ namespace PatternGeneratorJRL
 
     //Impedance control on left wrist and IK
     void IKwithImpedanceOnLeftArm(Eigen::VectorXd & qArml,
-                        Eigen::Vector3d & lwLoPre,
-                        Eigen::Vector3d & lwDesPre, 
-                        const FootAbsolutePosition & leftFootAbsolute,
-                        Eigen::VectorXd & aCoMSpeed,
-                        Eigen::VectorXd & aCoMPosition,
-                        const pinocchio::JointIndex & jointRoot);
-    Eigen::Vector3d ImpHandPos(Eigen::Vector3d & lwLoPre,
-               Eigen::Vector3d & lwDesPre, 
-               const FootAbsolutePosition & leftFootAbsolute,
-               Eigen::VectorXd & aCoMSpeed,
-               Eigen::VectorXd & aCoMPosition,
-               Eigen::Vector3d & lwCurrentShoulderFrame
-               );
+                                  Eigen::Vector3d & lwPre,
+                                  const FootAbsolutePosition & leftFootAbsolute,
+                                  Eigen::VectorXd & aCoMSpeed,
+                                  Eigen::VectorXd & aCoMPosition);
+
+    Eigen::Vector3d ImpHandPos(Eigen::Vector3d & lwPre,
+                               const FootAbsolutePosition & leftFootAbsolute,
+                               Eigen::VectorXd & aCoMSpeed,
+                               Eigen::VectorXd & aCoMPosition,
+                               Eigen::Vector3d & lwCur);
 
     /*! This method returns the final COM pose matrix 
       after the second stage of control. */
@@ -598,9 +608,8 @@ namespace PatternGeneratorJRL
     bool ShiftFoot_ ;
 
     /*parameters for impedance control*/
-    Eigen::Vector3d lwLoPre, lwDesPre, lwCur;
-    Eigen::Vector3d m_lwLoPre, m_lwCur;
-    Eigen::VectorXd m_qArml;
+    Eigen::Vector3d lwPre;
+    Eigen::Vector3d m_lwPre, m_lwCur;
   };
 
   ostream & operator <<(ostream &os,const ComAndFootRealization &obj);

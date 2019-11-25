@@ -560,7 +560,8 @@ void PinocchioRobot::
 computeInverseDynamicsFext
 (Eigen::VectorXd & q,
  Eigen::VectorXd & v,
- Eigen::VectorXd & a)
+ Eigen::VectorXd & a,
+ double & distCoM)
 {
   //  RPYToSpatialFreeFlyer(m_rpy,m_drpy,m_ddrpy,
   //                        m_quat,m_omega,m_domega);
@@ -591,8 +592,13 @@ computeInverseDynamicsFext
   pinocchio::container::aligned_vector<pinocchio::Force> fext(m_robotModel->joints.size(), pinocchio::Force::Zero());
   pinocchio::FrameIndex lw = m_robotModel->getFrameId("l_wrist");
   m_leftWrist = m_robotModel->frames[lw].parent ;
+  Eigen::VectorXd v_force, v_torque; 
+  v_force.resize(3); v_torque.resize(3);
+  v_force.fill(0); v_torque.fill(0);
+  v_force(0) = distCoM * 14 +5;
+  v_force(2) = 0.32 * 7 * (-9.8) - 1; // f_z = part*massOfHose*g - sensorOffset
   pinocchio::Force flw = pinocchio::Force::Zero();
-  //flw(0) = distCom * 14 +5;
+  flw = pinocchio::Force(v_force, v_torque);
   fext[m_leftWrist] = flw; 
 
   // performing the inverse dynamics

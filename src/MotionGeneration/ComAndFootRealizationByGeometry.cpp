@@ -105,13 +105,9 @@ ComAndFootRealizationByGeometry(PatternGeneratorInterfacePrivate *aPGI)
 
   m_COGInitialAnkles.setZero();
 
-  lwLoPre(0) = 0.045, lwLoPre(1) = 0.332, lwLoPre(2) = -0.335; //lw in shoulder frame; half-sitting pose
-  m_lwLoPre = lwLoPre;
-  m_lwCur = m_lwLoPre;
-  lwDesPre = lwLoPre; //To do: remove lwDesPre
-  lwCur = lwLoPre;
-  m_qArml.resize(7);
-  m_qArml << 0.25847, 0.173046, -0.0002, -0.525366, 0, 0, 0.1;
+  lwPre(0) = 0.0781226, lwPre(1) = 0.410448, lwPre(2) = -0.22532; //lw in shoulder frame; half-sitting pose
+  m_lwPre = lwPre;
+  m_lwCur = m_lwPre;
 }
 
 void ComAndFootRealizationByGeometry::
@@ -279,21 +275,6 @@ Initialization()
                          m_LeftArmIndexinConfiguration,
                          m_LeftArmIndexinVelocity,
                          m_LeftShoulder);
-
-  /*  //init lw pre pos
-   pinocchio::JointIndex leftWristJoint = getPinocchioRobot()->leftWrist();
-  pinocchio::SE3 leftWristSE3 = getPinocchioRobot()->Data()->oMi[leftWristJoint];
-  Eigen::Vector3d lwCurPos   = leftWristSE3.translation();
-  Eigen::Matrix3d lwR        = leftWristSE3.rotation();
-  lwLoPre = lwR.transpose() * lwCurPos; // LeftWrist local frame   
-  */
-  /*
-  lwLoPre(0) = 0.045, lwLoPre(1) = 0.332, lwLoPre(2) = -0.335; //lw in shoulder frame; RP
-  m_lwLoPre = lwLoPre;
-  m_lwCur = m_lwLoPre;
-  lwDesPre = lwLoPre; //To do: change it to shoulder frame
-  lwCur = lwLoPre;
-  */
 
   // Create maps for the right hand.
   InitializeMapsForAHand(getPinocchioRobot()->rightWrist(),
@@ -880,6 +861,7 @@ KinematicsForTheLegs
   return true;
 }
 
+//with Impedance controller in lw
 bool ComAndFootRealizationByGeometry::
 ComputePostureForGivenCoMAndFeetPosture
 (Eigen::VectorXd & aCoMPosition,
@@ -937,11 +919,7 @@ ComputePostureForGivenCoMAndFeetPosture
          aRightFoot,
          aLeftFoot);
 
-      std::cout << "Ite = " <<IterationNumber;
-      std::cout << ", qArml = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) <<std::endl;
-      //qArml(3) << std::endl; //", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
-      m_qArml = qArml;
-      IKwithImpedanceOnLeftArm(qArml, lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, m_LeftShoulder);
+      IKwithImpedanceOnLeftArm(qArml, lwPre, leftFootAbsolute, aCoMSpeed, aCoMPosition);
     }
 
   // For stepping over modify the waist position and
@@ -1002,14 +980,304 @@ ComputePostureForGivenCoMAndFeetPosture
   for(unsigned int i=0; i<qArmr.size(); i++)
     CurrentConfiguration[m_RightArmIndexinConfiguration[i]] = qArmr[i];
 
-  //std::cout << "qArml* = " << qArml(0) << ", " << qArml(1) << ", " << qArml(2) << ", " <<std::endl;
-  //qArml(3) << std::endl; //", " << qArml(4) << ", " << qArml(5) << ", " << qArml(6) << std::endl;
-  m_qArml = qArml;
+  for(unsigned int i=0; i<qArml.size(); i++)
+    CurrentConfiguration[m_LeftArmIndexinConfiguration[i]] = qArml[i];
+
+  // Update the speed values.
+  /* If this is the first call ( stage = 0)
+     we should update the current stored values.  */
+  /* Initialize the acceleration */
+  for(unsigned int i=0; i<CurrentAcceleration.size(); i++)
+    {
+      CurrentVelocity[i]=0.0;
+       CurrentAcceleration[i] = 0.0;
+      /* Keep the new value for the legs. */
+    }
+
+  double ldt =  getSamplingPeriod();
+
+  pinocchio::JointIndex diffVelSize = getPinocchioRobot()->getFreeFlyerSize()-
+    getPinocchioRobot()->getFreeFlyerVelSize();
+
+  if (Stage==0)
+    {
+      if (IterationNumber>0)
+        {
+          /* Compute the speed */
+          for(unsigned int i=6; i<m_prev_Configuration.size()-diffVelSize; i++)
+            {
+              CurrentVelocity[i] = (CurrentConfiguration[i+diffVelSize]
+                                    - m_prev_Configuration[i+diffVelSize])/ ldt;
+              /* Keep the new value for the legs. */
+            }
+
+          if (IterationNumber>1)
+            {
+              for(unsigned int i=6; i<m_prev_Velocity.size(); i++)
+                CurrentAcceleration[i] =
+                  (CurrentVelocity[i] - m_prev_Velocity[i])/ ldt;
+            }
+        }
+      else
+        {
+          /* Compute the speed */
+          for(unsigned int i=0; i<CurrentVelocity.size(); i++)
+            {
+              CurrentVelocity[i] = 0.0;
+              /* Keep the new value for the legs. */
+            }
+        }
+
+      ODEBUG4(CurrentVelocity, "DebugDataVelocity0.dat");
+      m_prev_Configuration = CurrentConfiguration;
+      m_prev_Velocity = CurrentVelocity;
+    }
+  else if (Stage==1)
+    {
+      ODEBUG("lql: "<<lql<< " lqr: " <<lqr);
+      if (IterationNumber>0)
+        {
+          /* Compute the speed */
+          for(unsigned int i=6; i<m_prev_Configuration1.size()-diffVelSize; i++)
+            {
+              CurrentVelocity[i] = (CurrentConfiguration[i+diffVelSize] -
+                                    m_prev_Configuration1[i+diffVelSize])/ ldt;
+              /* Keep the new value for the legs. */
+            }
+          if (IterationNumber>1)
+            {
+              for(unsigned int i=6; i<m_prev_Velocity1.size(); i++)
+                CurrentAcceleration[i] =
+                  (CurrentVelocity[i] - m_prev_Velocity1[i])/ ldt;
+            }
+        }
+      else
+        {
+          CurrentVelocity.setZero();
+        }
+      ODEBUG4(CurrentVelocity, "DebugDataVelocity1.dat");
+      m_prev_Configuration1 = CurrentConfiguration;
+      m_prev_Velocity1 = CurrentVelocity;
+    }
+  else if (Stage==2)
+    {
+      ODEBUG("lql: "<<lql<< " lqr: " <<lqr);
+      if (IterationNumber>0)
+        {
+          /* Compute the speed */
+          for(unsigned int i=6; i<m_prev_Configuration2.size()-diffVelSize; i++)
+            {
+              CurrentVelocity[i] = (CurrentConfiguration[i+diffVelSize]
+                                    - m_prev_Configuration2[i+diffVelSize])/
+                getSamplingPeriod();
+              /* Keep the new value for the legs. */
+            }
+          if (IterationNumber>1)
+            {
+              for(unsigned int i=6; i<m_prev_Velocity2.size()-diffVelSize; i++)
+                CurrentAcceleration[i] =
+                  (CurrentVelocity[i+diffVelSize]
+                   - m_prev_Velocity2[i+diffVelSize])/ ldt;
+            }
+        }
+      else
+        {
+          CurrentVelocity.setZero();
+        }
+      ODEBUG4(CurrentVelocity, "DebugDataVelocity1.dat");
+      m_prev_Configuration2 = CurrentConfiguration;
+      m_prev_Velocity2 = CurrentVelocity;
+    }
+
+  Eigen::Vector3d waistCom;
+  for(int i=0; i<3; i++)
+    waistCom(i) = aCoMPosition(i) - AbsoluteWaistPosition(i) ;
+
+  // v_waist = v_com + waist-com x omega :
+  CurrentVelocity[0] = aCoMSpeed(0) +
+    (waistCom(1)*aCoMSpeed(5)  -  waistCom(2)*aCoMSpeed(4) ) ;
+  CurrentVelocity[1] = aCoMSpeed(1) +
+    (waistCom(2)*aCoMSpeed(3)  - waistCom(0)*aCoMSpeed(5) ) ;
+  CurrentVelocity[2] = aCoMSpeed(2) +
+    (waistCom(0)*aCoMSpeed(4)  - waistCom(1)*aCoMSpeed(3) ) ;
+
+  // omega_waist = omega_com
+  for(int i=3; i<6; i++)
+    CurrentVelocity[i] = aCoMSpeed(i);
+
+
+  // (omega x waist-com) x omega = waist-com ( omega . omega )
+  // - omega ( omega . waist-com )
+  Eigen::Vector3d coriolis;
+  double omega_dot_omega =
+    aCoMSpeed(3)*aCoMSpeed(3) +
+    aCoMSpeed(4)*aCoMSpeed(4) +
+    aCoMSpeed(5)*aCoMSpeed(5) ;
+  double omega_dot_waistCom =
+    aCoMSpeed(3)*waistCom(0) +
+    aCoMSpeed(4)*waistCom(1) +
+    aCoMSpeed(5)*waistCom(2) ;
+
+  coriolis(0) = waistCom(0) * omega_dot_omega -
+    aCoMSpeed( 3) * omega_dot_waistCom ;
+  coriolis(1) = waistCom(1) * omega_dot_omega -
+    aCoMSpeed(4) * omega_dot_waistCom ;
+  coriolis(2) = waistCom(2) * omega_dot_omega -
+    aCoMSpeed(5) * omega_dot_waistCom ;
+
+  // a_waist = a_com + waist-com x d omega/dt + (omega x waist-com) x omega
+  CurrentAcceleration[0] = aCoMAcc(0) +
+    (waistCom(1)*aCoMAcc(5)  - waistCom(2)*aCoMAcc(4) ) + coriolis(0) ;
+  CurrentAcceleration[1] = aCoMAcc(1) +
+    (waistCom(2)*aCoMAcc(3)  - waistCom(0)*aCoMAcc(5) ) + coriolis(1) ;
+  CurrentAcceleration[2] = aCoMAcc(2) +
+    (waistCom(0)*aCoMAcc(4)  - waistCom(1)*aCoMAcc(3) ) + coriolis(2) ;
+
+  // d omega_waist /dt = d omega_com /dt
+  //cout << "CFRG : " ;
+  for(int i=3; i<6; i++)
+    {
+      //cout << aCoMAcc(i) << " "  ;
+      CurrentAcceleration[i] = aCoMAcc(i);
+    }//cout << endl ;
+
+
+  ODEBUG( "CurrentVelocity :" << endl << CurrentVelocity);
+  ODEBUG4("SamplingPeriod " << getSamplingPeriod(),"LegsSpeed.dat");
+
+  string aDebugFileName;
+
+  ODEBUG4( (1.0/M_PI)*180.0*lql[0] << " " <<
+           (1.0/M_PI)*180.0*lql[1] << " " <<
+           (1.0/M_PI)*180.0*lql[2] << " " <<
+           (1.0/M_PI)*180.0*lql[3] << " " <<
+           (1.0/M_PI)*180.0*lql[4] << " " <<
+           (1.0/M_PI)*180.0*lql[5],(char *)aDebugFileName.c_str());
+
+  ODEBUG4(CurrentVelocity,"DebugDataVelocity.dat");
+
+  ODEBUG4( aCoMPosition[0]
+           << " " <<
+           aCoMPosition[1],"COMPC1.dat");
+
+  return true;
+}
+
+//Without Impedance controller
+bool ComAndFootRealizationByGeometry::
+ComputePostureForGivenCoMAndFeetPosture
+(Eigen::VectorXd & aCoMPosition,
+ Eigen::VectorXd & aCoMSpeed,
+ Eigen::VectorXd & aCoMAcc,
+ Eigen::VectorXd & aLeftFoot,
+ Eigen::VectorXd & aRightFoot,
+ Eigen::VectorXd & CurrentConfiguration,
+ Eigen::VectorXd & CurrentVelocity,
+ Eigen::VectorXd & CurrentAcceleration,
+ unsigned long int IterationNumber,
+ int Stage)
+{
+  Eigen::Vector3d AbsoluteWaistPosition;
+  Eigen::VectorXd lqr(6);
+  Eigen::VectorXd lql(6);
+
+  // Kinematics for the legs.
+  KinematicsForTheLegs(aCoMPosition,
+                       aLeftFoot,
+                       aRightFoot,
+                       Stage,
+                       lql,
+                       lqr,
+                       AbsoluteWaistPosition);
+  /// NOW IT IS ABOUT THE UPPER BODY... ////
+  Eigen::VectorXd qArmr(6);
+  Eigen::VectorXd qArml(6);
+
+  for(unsigned int i=0; i<qArmr.size(); i++)
+    {
+      qArmr[i] = 0.0;
+      qArml[i] = 0.0;
+    }
+
+  if (GetStepStackHandler()->GetWalkMode()<3)
+    {
+      Eigen::VectorXd lAbsoluteWaistPosition(6);
+      for(unsigned int i=0; i<3; i++)
+        {
+          lAbsoluteWaistPosition(i) = AbsoluteWaistPosition[i];
+          lAbsoluteWaistPosition(i+3) = aCoMPosition(i+3);
+        }
+      ODEBUG("AbsoluteWaistPosition:" << lAbsoluteWaistPosition  <<
+             " ComPosition" << aCoMPosition);
+
+      ComputeUpperBodyHeuristicForNormalWalking
+        (qArmr,
+         qArml,
+         lAbsoluteWaistPosition,
+         aRightFoot,
+         aLeftFoot);
+    }
+
+  // For stepping over modify the waist position and
+  // according to parameters the arms motion.
+  if(GetStepStackHandler()->GetWalkMode()==2)
+    {
+
+      /// this angle is introduced to rotate the upperbody
+      ///  when the waist is rotated during stepover
+      double qWaistYaw = -CurrentConfiguration
+        (m_ChestIndexinConfiguration[0])*M_PI/180.0;
+      ODEBUG4(qWaistYaw,"DebugDataWaistYaw.dat");
+      //this is not correct yet since it uses COMPositionFromPC1.
+      // theta which also changes when turning....
+      // it will be modified in the near future
+      // include waistrotation in dynamic model for second preview correction
+
+      CurrentConfiguration[m_ChestIndexinConfiguration[0]] = qWaistYaw;
+
+      if (m_UpperBodyMotion[0]!=0)
+        {
+          CurrentConfiguration[m_ChestIndexinConfiguration[1]] =
+            m_UpperBodyMotion[0]*fabs(qWaistYaw);
+
+        }
+      if (m_UpperBodyMotion[1]!=0)
+        {
+          qArmr(0)=qArmr(0)-m_UpperBodyMotion[1]*fabs(qWaistYaw);
+          qArml(0)=qArml(0)-m_UpperBodyMotion[1]*fabs(qWaistYaw);
+        }
+
+      if (m_UpperBodyMotion[2]!=0)
+        {
+
+          aCoMPosition(4) = m_UpperBodyMotion[2]*fabs(aCoMPosition(5));
+        }
+
+    }
+
+  ODEBUG( "ComAndFoot: AbsoluteWaistPosition: "
+          << AbsoluteWaistPosition << endl
+          << "CoMPosition: " << aCoMPosition );
+  ODEBUG("Left FootPosition: " << aLeftFoot <<
+         " Right FootPosition: " << aRightFoot );
+  /* Update of the configuration and velocity vector */
+  for(int i=0; i<3; i++)
+    CurrentConfiguration[i] = AbsoluteWaistPosition(i);
+
+  for(int i=3; i<6; i++)
+    CurrentConfiguration[i] = aCoMPosition(i)*M_PI/180.0;
+
+  for(unsigned int i=0; i<lqr.size(); i++)
+    CurrentConfiguration[m_RightLegIndexinConfiguration[i]] = lqr[i];
+
+  for(unsigned int i=0; i<lql.size(); i++)
+    CurrentConfiguration[m_LeftLegIndexinConfiguration[i]] = lql[i];
+
+  for(unsigned int i=0; i<qArmr.size(); i++)
+    CurrentConfiguration[m_RightArmIndexinConfiguration[i]] = qArmr[i];
 
   for(unsigned int i=0; i<qArml.size(); i++)
     CurrentConfiguration[m_LeftArmIndexinConfiguration[i]] = qArml[i];
-  std::cout<<"GeoLA=" <<CurrentConfiguration[m_LeftArmIndexinConfiguration[0]]<<","<<CurrentConfiguration[m_LeftArmIndexinConfiguration[1]]<<","
-  <<CurrentConfiguration[m_LeftArmIndexinConfiguration[2]]<<std::endl;
 
   // Update the speed values.
   /* If this is the first call ( stage = 0)
@@ -1460,14 +1728,11 @@ ostream& PatternGeneratorJRL::operator<<(ostream &os,
 
 //Impedance control on Left Arm
 void ComAndFootRealizationByGeometry::
-    IKwithImpedanceOnLeftArm(Eigen::VectorXd & qArml,
-                             Eigen::Vector3d & lwLoPre,
-                             Eigen::Vector3d & lwDesPre, 
-                             const FootAbsolutePosition & leftFootAbsolute,
-                             Eigen::VectorXd & aCoMSpeed,
-                             Eigen::VectorXd & aCoMPosition,
-                             const pinocchio::JointIndex & jointRoot
-    )
+IKwithImpedanceOnLeftArm(Eigen::VectorXd & qArml,
+                          Eigen::Vector3d & lwPre,
+                          const FootAbsolutePosition & leftFootAbsolute,
+                          Eigen::VectorXd & aCoMSpeed,
+                          Eigen::VectorXd & aCoMPosition)
 {
   pinocchio::Model modelArm;
   const std::string filename = "/home/ang/Downloads/talos_data/urdf/talos_arm.urdf";
@@ -1481,26 +1746,20 @@ void ComAndFootRealizationByGeometry::
     q(k) = qArml(k);
   }
   
-  // To get current lw in shoulder frame
   pinocchio::forwardKinematics(modelArm,dataArm,q);  
-  const Eigen::Vector3d & x0   = dataArm.oMi[7].translation();
+  const Eigen::Vector3d & x0   = dataArm.oMi[7].translation();//oMi indacates "world"(shoulder) frame
   const Eigen::Matrix3d & R0   = dataArm.oMi[7].rotation();
-  Eigen::Vector3d lwCurrentShoulderFrame = R0.transpose() * x0;
+  Eigen::Vector3d lwCurrentShoulderFrame = x0; //Get current lw pos in shoulder frame
   m_lwCur = lwCurrentShoulderFrame;
-  //std::cout<< "lwCur = " << m_lwCur(0) <<", "<<m_lwCur(1) <<", "<<m_lwCur(2)<<"; "<<std::endl;
-  //Eigen::Vector3d lwCurrentShoulderFrame = m_lwCur;
-  lwLoPre = m_lwLoPre;
-  m_lwLoPre = m_lwCur;
+  //std::cout<< "m_lwCur = " << m_lwCur(0) <<", "<<m_lwCur(1) <<", "<<m_lwCur(2)<<"; "<<std::endl;
+  lwPre = m_lwPre;
+  m_lwPre = m_lwCur;
 
-  // pos in local left wrist frame OR leftShoulder frame
-  xdes = ImpHandPos(lwLoPre, lwDesPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, lwCurrentShoulderFrame); 
-  //std::cout << "xdes = " << xdes(0) << std::endl;
-  //m_lwCur = xdes;
+  //target hand pos in leftShoulder frame
+  xdes = ImpHandPos(lwPre, leftFootAbsolute, aCoMSpeed, aCoMPosition, lwCurrentShoulderFrame); 
 
-  //ODEBUG4(xdes[0]<<" "<< xdes[1]<<" "<<xdes[2], "HandImp.txt");
-
-  const double eps      = 1e-2;
-  const int IT_MAX      = 10; //1000
+  const double eps      = 1e-3;
+  const int IT_MAX      = 1000; 
   const double DT       = 5e-3;
   pinocchio::Data::Matrix6x J(6,modelArm.nv); J.setZero(); //7 joints in arm
   unsigned int svdOptions = Eigen::ComputeThinU | Eigen::ComputeThinV;
@@ -1511,9 +1770,9 @@ void ComAndFootRealizationByGeometry::
   for (int i=0;;i++)
   {
     pinocchio::forwardKinematics(modelArm,dataArm,q);  
-    const Eigen::Vector3d & x   = dataArm.oMi[JOINT_ID].translation();
+    const Eigen::Vector3d & x   = dataArm.oMi[JOINT_ID].translation(); 
     const Eigen::Matrix3d & R   = dataArm.oMi[JOINT_ID].rotation();
-    err = R.transpose() * x - xdes;// transform x to shoulder frame, xdes is in shoulder frame;
+    err = R.transpose() * (x - xdes);
     if(err.norm() < eps)
     {
         //std::cerr << "Convergence achieved!" << std::endl;
@@ -1535,31 +1794,26 @@ void ComAndFootRealizationByGeometry::
         break;
     }
     pinocchio::jointJacobian(modelArm,dataArm,q,JOINT_ID,J);;
-    const Eigen::VectorXd v     = - svd.compute(J.topRows<3>()).solve(err * 0.01);
+    const Eigen::VectorXd v     = - svd.compute(J.topRows<3>()).solve(err);
     q = pinocchio::integrate(modelArm,q,v*DT);
   }
 }
 Eigen::Vector3d ComAndFootRealizationByGeometry::
-    ImpHandPos(Eigen::Vector3d & lwLoPre,
-               Eigen::Vector3d & lwDesPre, 
-               const FootAbsolutePosition & leftFootAbsolute,
-               Eigen::VectorXd & aCoMSpeed,
-               Eigen::VectorXd & aCoMPosition,
-               Eigen::Vector3d & lwCurPos
-               )
+ImpHandPos(Eigen::Vector3d & lwPre,
+           const FootAbsolutePosition & leftFootAbsolute,
+           Eigen::VectorXd & aCoMSpeed,
+           Eigen::VectorXd & aCoMPosition,
+           Eigen::Vector3d & lwCur)
 {
   Eigen::Vector3d lwDes, flw, fd, fDS, flw_shoulder;
   double vel_ = aCoMSpeed(0);
-  lwDes.fill(0);
+  lwDes.fill(0); fDS.fill(0); flw_shoulder.fill(0);
   flw.fill(0); //Real force collectted from left wrist sensor
   fd.fill(0);  //Desired force
-  fDS.fill(0);
-  flw_shoulder.fill(0);
+  
   double waistInitX = 0.0;
-  //double distWaistX = leftFootAbsolute.x - waistInitX; 
   double distWaistX = aCoMPosition(0) - waistInitX;
-  // waist is local frame, use foot to predict distance!
-  double flwX = 14 * distWaistX + 5; //Imitate real hand force. To do : fluctuation, and Z
+  double flwX = -(14 * distWaistX + 5); //Imitate real hand force. To do: fluctuation, Z axis
   flw(0) = flwX;
   //double flwZ = 14 * distWaistX + 5 - 15; //hand f in z axis
   //flw(2) = flwZ;
@@ -1592,21 +1846,15 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   fd(2) = (part * massHose * gx) -11.0; //Sensor offset = -11.0 
   double m_ = 1.0, c_ = 5.0;
 
-  Eigen::Vector3d posImp;
-  posImp.fill(0);
-  //posImp = (((dt * dt) / m_) * (flw_shoulder - (fd - fDS) - ((c_ / dt) * (lwCurPos - lwLoPre)))) 
-  //         + 2 * lwCurPos - lwLoPre;
+  //lwDes = (((dt * dt) / m_) * (flw_shoulder - (fd - fDS) - ((c_ / dt) * (lwCur - lwPre)))) 
+  //         + 2 * lwCur - lwPre;
   //--------design a impedance wich move lw 20cm in local frame------------0.3flw, 0.06fds
-  posImp = (((dt * dt) / m_) * (-0.4*flw_shoulder + 0.2*fDS - ((c_ / dt) * (lwCurPos - lwLoPre)))) 
-           + 2 * lwCurPos - lwLoPre;
-  posImp(1) = lwLoPre(1);//keep y as a constant value
-  posImp(2) = lwLoPre(2);
-  //std::cout<<"lwLoPre = "<<lwLoPre(0)<<" , ";
-  //std::cout<<flw_shoulder(0)<<" ,,, " << fDS(0) <<" ,,,,  "<<posImp(0)<<std::endl;
+  //don't need fd, To do: redesign impedance control 
+  lwDes = (((dt * dt) / m_) * (7*flw_shoulder + 0.03*fDS - ((c_ / dt) * (lwCur - lwPre)))) 
+           + 2 * lwCur - lwPre;
+  lwDes(1) = lwPre(1);//keep y as a constant value
+  lwDes(2) = lwPre(2);
 
-  lwDes = posImp;
-  
-  //set constraints 
   if (lwDes(0) > 0.2)
   {
     lwDes(0) = 0.2 ; //the X limit distance between lw and waist is 20cm
@@ -1615,7 +1863,6 @@ Eigen::Vector3d ComAndFootRealizationByGeometry::
   {
     lwDes(0) = -0.2 ; 
   }
-
   /* if (lwDes(2) - waistLo(2) > -0.05)
   {
     lwDes(2) = -0.05 + waistLo(2); //the Z limit distance between lw and waist 

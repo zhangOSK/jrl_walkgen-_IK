@@ -282,8 +282,6 @@ OnLinefilter
   unsigned int N = (unsigned int)inputRightFootTraj_deq_.size() ;
   int inc = (int)round(interpolationPeriod_/controlPeriod_) ;
   unsigned int N1 = (unsigned int)((ZMPMB_vec_.size()-1)*inc +1 );
-  //------------------test
-  std::cout<<",N1 = "<<N1<<std::endl;
   if(useDynamicFilter_)
     {
       for(unsigned int i = 0 ; i < N ; ++i)
@@ -379,10 +377,7 @@ OnLinefilter
 
   OptimalControl(deltaZMP_deq_,outputDeltaCOMTraj_deq_) ;
 
-  std::cout<< outputDeltaCOMTraj_deq_[0].x[0] << ", " << outputDeltaCOMTraj_deq_[0].y[0]<<
-  ", "<< outputDeltaCOMTraj_deq_[1].x[0] <<", " << outputDeltaCOMTraj_deq_[1].y[0]<< ", " <<
-  outputDeltaCOMTraj_deq_[2].x[0] << ", " << outputDeltaCOMTraj_deq_[2].y[0] <<std::endl;
-
+  std::cout<<" ,deltaCoM="<< outputDeltaCOMTraj_deq_[0].x[0] << ", " << outputDeltaCOMTraj_deq_[0].y[0]<<std::endl;
 
   return 0 ;
 }
@@ -395,7 +390,7 @@ zmpmb
  Eigen::VectorXd& acceleration,
  Eigen::Vector3d & zmpmb)
 {
-  PR_->computeInverseDynamicsFext(configuration,velocity,acceleration);
+  PR_->computeInverseDynamics(configuration,velocity,acceleration); //To do: should we add fext here?
   PR_->zeroMomentumPoint(zmpmb);
   return 0 ;
 }
@@ -457,13 +452,12 @@ InverseKinematics
     (aCoMState_, aCoMSpeed_, aCoMAcc_,
      aLeftFootPosition_, aRightFootPosition_,
      configuration, velocity, acceleration,
-     iteration, stage,
-     inputLeftFoot);//footabso
+     iteration, stage);// No need to add impedance here
   
   //  std::cout << " configuration:" << configuration << std::endl;
   ODEBUG5SIMPLE(configuration,"/tmp/test_configuration.dat");
 
-  // upper body
+  // upper body 
   if (walkingHeuristic_)
     {
       upperPartConfiguration_         = configuration           ;
@@ -476,14 +470,10 @@ InverseKinematics
       upperPartAcceleration_.setZero();
       previousUpperPartVelocity_.setZero() ;
     }
-  //----------------test
-  std::cout<<"waHeu = "<<walkingHeuristic_<<",  ";
 
   for ( unsigned int i = 0 ; i < larmIdxq_.size() ; ++i )
     {
       configuration(larmIdxq_[i]) = upperPartConfiguration_(larmIdxq_[i]);
-      //-------------test
-      std::cout<<"L="<<configuration(larmIdxq_[i]) <<", " ;
       velocity(larmIdxv_[i])      = upperPartVelocity_(larmIdxv_[i]);
       acceleration(larmIdxv_[i])  = upperPartAcceleration_(larmIdxv_[i]);
     }
@@ -530,9 +520,14 @@ ComputeZMPMB
   CoMX = inputCoMState.x[0];
   if(iteration>0)
     {
-      PR_->computeInverseDynamicsFext(ZMPMBConfiguration_,
-                                  ZMPMBVelocity_,
-                                  ZMPMBAcceleration_);
+      double distCoM = inputCoMState.x[0];
+      PR_->computeInverseDynamics(ZMPMBConfiguration_,
+                                      ZMPMBVelocity_,
+                                      ZMPMBAcceleration_);
+      //PR_->computeInverseDynamicsFext(ZMPMBConfiguration_,
+      //                            ZMPMBVelocity_,
+      //                            ZMPMBAcceleration_,
+      //                            distCoM);
 
       PR_->zeroMomentumPoint(ZMPMB);
     }

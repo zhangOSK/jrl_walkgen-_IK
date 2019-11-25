@@ -133,6 +133,18 @@ namespace PatternGeneratorJRL
      Eigen::VectorXd &CurrentVelocity,
      Eigen::VectorXd &CurrentAcceleration,
      unsigned long int IterationNumber,
+     int Stage) =0; 
+
+    virtual bool ComputePostureForGivenCoMAndFeetPosture
+    (Eigen::VectorXd &COMPOSITION,
+     Eigen::VectorXd &CoMSpeed,
+     Eigen::VectorXd &CoMAcc,
+     Eigen::VectorXd &LeftFoot,
+     Eigen::VectorXd &RightFoot,
+     Eigen::VectorXd &CurrentConfiguration,
+     Eigen::VectorXd &CurrentVelocity,
+     Eigen::VectorXd &CurrentAcceleration,
+     unsigned long int IterationNumber,
      int Stage,
      const FootAbsolutePosition & leftFootAbsolute) =0; //footabso
 
