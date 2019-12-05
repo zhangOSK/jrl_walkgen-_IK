@@ -1779,7 +1779,6 @@ IKwithImpedanceOnLeftArm(Eigen::VectorXd & qArml,
         for (unsigned int j=0; j<qArml.size(); j++)
         {
           qArml(j) = q(j);
-
         }
         break;
     }
@@ -1788,8 +1787,7 @@ IKwithImpedanceOnLeftArm(Eigen::VectorXd & qArml,
         std::cerr << "\nWarning: the iterative algorithm has not reached convergence to the desired precision" << std::endl;
         for (unsigned int j=0; j<qArml.size(); j++)
         {
-          qArml(j) = q(j);
- 
+          qArml(j) = q(j); 
         }
         break;
     }
@@ -1798,6 +1796,7 @@ IKwithImpedanceOnLeftArm(Eigen::VectorXd & qArml,
     q = pinocchio::integrate(modelArm,q,v*DT);
   }
 }
+
 Eigen::Vector3d ComAndFootRealizationByGeometry::
 ImpHandPos(Eigen::Vector3d & lwPre,
            const FootAbsolutePosition & leftFootAbsolute,

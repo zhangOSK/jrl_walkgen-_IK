@@ -233,7 +233,6 @@ namespace PatternGeneratorJRL
       m_externalForces = m_robotData->liMi[1].act(m_robotData->f[1]);
       m_f = m_externalForces.linear() ;
       m_n = m_externalForces.angular() ;
-      std::cout<<"extF= "<< m_f<<" ,torq="<<m_n<<", ";
       zmp(0) = -m_n(1)/m_f(2) ;
       zmp(1) =  m_n(0)/m_f(2) ;
       zmp(2) = 0.0 ; // by default

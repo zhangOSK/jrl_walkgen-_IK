@@ -377,8 +377,9 @@ OnLinefilter
 
   OptimalControl(deltaZMP_deq_,outputDeltaCOMTraj_deq_) ;
 
-  std::cout<<" ,deltaCoM="<< outputDeltaCOMTraj_deq_[0].x[0] << ", " << outputDeltaCOMTraj_deq_[0].y[0]<<std::endl;
-
+  std::cout<<"  deltaCoM_x "<< outputDeltaCOMTraj_deq_[0].x[0]
+   << " dCoMy= " << outputDeltaCOMTraj_deq_[0].y[0]
+   << " dCoMz= " << outputDeltaCOMTraj_deq_[0].z[0]<<std::endl;
   return 0 ;
 }
 
@@ -524,10 +525,11 @@ ComputeZMPMB
       PR_->computeInverseDynamics(ZMPMBConfiguration_,
                                       ZMPMBVelocity_,
                                       ZMPMBAcceleration_);
-      //PR_->computeInverseDynamicsFext(ZMPMBConfiguration_,
-      //                            ZMPMBVelocity_,
-      //                            ZMPMBAcceleration_,
-      //                            distCoM);
+      //add fext in id
+      /*PR_->computeInverseDynamicsFext(ZMPMBConfiguration_,
+                                  ZMPMBVelocity_,
+                                  ZMPMBAcceleration_,
+                                  distCoM);*/
 
       PR_->zeroMomentumPoint(ZMPMB);
     }

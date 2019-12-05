@@ -595,8 +595,9 @@ computeInverseDynamicsFext
   Eigen::VectorXd v_force, v_torque; 
   v_force.resize(3); v_torque.resize(3);
   v_force.fill(0); v_torque.fill(0);
-  v_force(0) = distCoM * 14 +5;
+  v_force(0) = -(distCoM * 14 +5);
   v_force(2) = 0.32 * 7 * (-9.8) - 1; // f_z = part*massOfHose*g - sensorOffset
+  std::cout<< " fx " << v_force(0) << " fz " << v_force(2) << " distX " << distCoM;
   pinocchio::Force flw = pinocchio::Force::Zero();
   flw = pinocchio::Force(v_force, v_torque);
   fext[m_leftWrist] = flw; 

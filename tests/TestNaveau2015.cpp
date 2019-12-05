@@ -567,7 +567,7 @@ protected:
 	{30*200,&TestObject::walkX05Y04},
 	{50*200,&TestObject::walkOnSpot},
 	{66*200,&TestObject::stop},*/
-	{5*200,&TestObject::stopOnLineWalking}
+	{10*200,&TestObject::stopOnLineWalking}
       };
 
     if (m_setOfLocalEvents!=0)
